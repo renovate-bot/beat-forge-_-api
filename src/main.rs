@@ -1,0 +1,82 @@
+use std::{io, sync::Arc};
+
+use actix_cors::Cors;
+use actix_web::{
+    get, middleware, route,
+    web::{self, Data},
+    App, HttpResponse, HttpServer, Responder, Error,
+};
+use actix_web_lab::respond::Html;
+use juniper::http::{graphiql::graphiql_source, GraphQLRequest};
+
+mod schema;
+mod users;
+mod mods;
+mod versions;
+
+use crate::schema::{create_schema, Schema};
+
+/// GraphiQL playground UI
+async fn graphiql_route() -> Result<HttpResponse, Error> {
+    juniper_actix::graphiql_handler("/graphgl", None).await
+}
+
+async fn playground_route() -> Result<HttpResponse, Error> {
+    juniper_actix::playground_handler("/graphgl", None).await
+}
+
+async fn graphql_route(
+    req: actix_web::HttpRequest,
+    payload: actix_web::web::Payload,
+    data: web::Data<Schema>,
+) -> Result<HttpResponse, Error> {
+    let database = Database {
+        pool: sea_orm::Database::connect(&std::env::var("DATABASE_URL").unwrap())
+            .await
+            .unwrap(),
+    };
+    juniper_actix::graphql_handler(&data, &database, req, payload).await
+}
+
+#[derive(Clone)]
+pub struct Database {
+    pool: sea_orm::DatabaseConnection,
+}
+
+// #[derive(Clone)]
+// pub struct AppState {
+//     db: Database,
+//     schema: Arc<Schema>,
+// }
+
+impl juniper::Context for Database {}
+
+#[actix_web::main]
+async fn main() -> io::Result<()> {
+    dotenv::dotenv().ok();
+    env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
+
+    log::info!("starting HTTP server on port 8080");
+    log::info!("GraphiQL playground: http://localhost:8080/graphiql");
+    log::info!("Playground: http://localhost:8080/playground");
+
+    // Start HTTP server
+    HttpServer::new(move || {
+        App::new()
+            .app_data(Data::new(create_schema()))
+            .service(
+                web::resource("/graphgl")
+                    .route(web::post().to(graphql_route))
+                    .route(web::get().to(graphql_route)),
+            )
+            .service(web::resource("/playground").route(web::get().to(playground_route)))
+            .service(web::resource("/graphiql").route(web::get().to(graphiql_route)))
+            // the graphiql UI requires CORS to be enabled
+            .wrap(Cors::permissive())
+            .wrap(middleware::Logger::default())
+    })
+    .workers(2)
+    .bind(("0.0.0.0", 8080))?
+    .run()
+    .await
+}
