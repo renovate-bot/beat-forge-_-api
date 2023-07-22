@@ -3,6 +3,7 @@ use entity::prelude::*;
 use juniper::{
     graphql_value, FieldError, FieldResult, GraphQLEnum, GraphQLInputObject, GraphQLObject,
 };
+use serde::{Serialize, Deserialize};
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QuerySelect, Related};
 use uuid::Uuid;
 
@@ -11,7 +12,7 @@ use crate::{
     Database,
 };
 
-#[derive(GraphQLObject)]
+#[derive(GraphQLObject, Debug, Deserialize, Serialize)]
 pub struct GVersion {
     pub id: Uuid,
     pub mod_id: Uuid,
@@ -22,7 +23,7 @@ pub struct GVersion {
     pub created_at: DateTime<Utc>,
 }
 
-#[derive(GraphQLObject)]
+#[derive(GraphQLObject, Debug, Deserialize, Serialize)]
 pub struct GVersionStats {
     pub downloads: Option<i32>,
     // pub rating: f32,

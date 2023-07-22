@@ -1,13 +1,14 @@
 use chrono::{DateTime, Utc};
 use juniper::{FieldError, FieldResult, GraphQLObject};
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QuerySelect};
+use serde::{Serialize, Deserialize};
 use uuid::Uuid;
 
 use entity::prelude::*;
 
 use crate::{Database, versions::{GVersion, self}};
 
-#[derive(GraphQLObject)]
+#[derive(GraphQLObject, Debug, Deserialize, Serialize)]
 pub struct Mod {
     pub id: Uuid,
     pub slug: String,
@@ -52,14 +53,14 @@ impl Mod {
     }
 }
 
-#[derive(GraphQLObject)]
+#[derive(GraphQLObject, Debug, Deserialize, Serialize)]
 pub struct GModStats {
     pub downloads: Option<i32>,
     // pub rating: f32,
     // pub rating_count: i32,
 }
 
-#[derive(GraphQLObject)]
+#[derive(GraphQLObject, Debug, Deserialize, Serialize)]
 pub struct ModCategory {
     pub name: String,
     pub desc: Option<String>,

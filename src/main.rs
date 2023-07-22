@@ -1,4 +1,4 @@
-use std::{io, sync::Arc};
+use std::{io, sync::Arc, path::Path};
 
 use actix_cors::Cors;
 use actix_web::{
@@ -7,12 +7,15 @@ use actix_web::{
     App, HttpResponse, HttpServer, Responder, Error,
 };
 use actix_web_lab::respond::Html;
+use futures::FutureExt;
 use juniper::http::{graphiql::graphiql_source, GraphQLRequest};
+use rand::Rng;
 
 mod schema;
 mod users;
 mod mods;
 mod versions;
+mod auth;
 
 use crate::schema::{create_schema, Schema};
 
@@ -43,6 +46,10 @@ pub struct Database {
     pool: sea_orm::DatabaseConnection,
 }
 
+#[derive(Clone)]
+pub struct Key(Vec<u8>);
+
+
 // #[derive(Clone)]
 // pub struct AppState {
 //     db: Database,
@@ -60,10 +67,28 @@ async fn main() -> io::Result<()> {
     log::info!("GraphiQL playground: http://localhost:8080/graphiql");
     log::info!("Playground: http://localhost:8080/playground");
 
+    if !Path::new("./secret.key").exists() {
+        let mut rng = rand::thread_rng();
+        let key: Vec<u8> = (0..1024).map(|_| rng.gen::<u8>()).collect();
+        std::fs::write("./secret.key", key).unwrap();
+
+        println!("Generated secret key (first run)");
+    }
+
+    let key =Key(std::fs::read("./secret.key").unwrap());
+
+    let db_conn = sea_orm::Database::connect(&std::env::var("DATABASE_URL").unwrap())
+        .await
+        .unwrap();
+
     // Start HTTP server
-    HttpServer::new(move || {
+    HttpServer::new( move || {
         App::new()
             .app_data(Data::new(create_schema()))
+            .app_data(Data::new(key.clone()))
+            .app_data(Data::new(Database {
+                pool: db_conn.clone(),
+            }))
             .service(
                 web::resource("/graphgl")
                     .route(web::post().to(graphql_route))
@@ -71,6 +96,7 @@ async fn main() -> io::Result<()> {
             )
             .service(web::resource("/playground").route(web::get().to(playground_route)))
             .service(web::resource("/graphiql").route(web::get().to(graphiql_route)))
+            .service(users::user_auth)
             // the graphiql UI requires CORS to be enabled
             .wrap(Cors::permissive())
             .wrap(middleware::Logger::default())

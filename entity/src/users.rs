@@ -23,8 +23,8 @@ pub struct Model {
     pub banner: Option<String>,
     pub created_at: DateTime,
     pub updated_at: DateTime,
-    #[sea_orm(column_type = "Text", unique)]
-    pub api_key: String,
+    #[sea_orm(unique)]
+    pub api_key: Uuid,
     #[sea_orm(column_type = "Text", unique)]
     pub email: String,
 }
