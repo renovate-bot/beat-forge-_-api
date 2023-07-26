@@ -1,4 +1,3 @@
-use actix_web_lab::sse::Data;
 use juniper::{graphql_value, EmptyMutation, EmptySubscription, FieldResult, RootNode};
 
 #[derive(GraphQLEnum)]
