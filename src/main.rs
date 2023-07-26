@@ -52,15 +52,16 @@ pub struct Key([u8; 1024]);
 
 lazy_static::lazy_static! {
     pub static ref KEY: Arc<Key> = {
-        if !Path::new("./secret.key").exists() {
+        if !Path::new("./data/secret.key").exists() {
+            let _ = std::fs::create_dir(Path::new("./data"));
             let mut rng = rand::thread_rng();
             let key: Vec<u8> = (0..1024).map(|_| rng.gen::<u8>()).collect();
-            std::fs::write("./secret.key", key).unwrap();
+            std::fs::write("./data/secret.key", key).unwrap();
     
             println!("Generated secret key (first run)");
         }
     
-        Arc::new(Key(std::fs::read("./secret.key").unwrap().try_into().unwrap()))
+        Arc::new(Key(std::fs::read("./data/secret.key").unwrap().try_into().unwrap()))
     };
 }
 

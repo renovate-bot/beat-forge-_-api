@@ -1,3 +1,4 @@
 secret.key
 .env
 Cargo.lock
+target/
