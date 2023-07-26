@@ -7,6 +7,7 @@ use actix_web::{
     App, HttpResponse, HttpServer, Responder, Error,
 };
 use actix_web_lab::respond::Html;
+use cached::once_cell::sync::Lazy;
 use futures::FutureExt;
 use juniper::http::{graphiql::graphiql_source, GraphQLRequest};
 use rand::Rng;
@@ -46,9 +47,22 @@ pub struct Database {
     pool: sea_orm::DatabaseConnection,
 }
 
-#[derive(Clone)]
-pub struct Key(Vec<u8>);
+#[derive(Clone, Copy)]
+pub struct Key([u8; 1024]);
 
+lazy_static::lazy_static! {
+    pub static ref KEY: Arc<Key> = {
+        if !Path::new("./secret.key").exists() {
+            let mut rng = rand::thread_rng();
+            let key: Vec<u8> = (0..1024).map(|_| rng.gen::<u8>()).collect();
+            std::fs::write("./secret.key", key).unwrap();
+    
+            println!("Generated secret key (first run)");
+        }
+    
+        Arc::new(Key(std::fs::read("./secret.key").unwrap().try_into().unwrap()))
+    };
+}
 
 // #[derive(Clone)]
 // pub struct AppState {
@@ -67,16 +81,6 @@ async fn main() -> io::Result<()> {
     log::info!("GraphiQL playground: http://localhost:8080/graphiql");
     log::info!("Playground: http://localhost:8080/playground");
 
-    if !Path::new("./secret.key").exists() {
-        let mut rng = rand::thread_rng();
-        let key: Vec<u8> = (0..1024).map(|_| rng.gen::<u8>()).collect();
-        std::fs::write("./secret.key", key).unwrap();
-
-        println!("Generated secret key (first run)");
-    }
-
-    let key =Key(std::fs::read("./secret.key").unwrap());
-
     let db_conn = sea_orm::Database::connect(&std::env::var("DATABASE_URL").unwrap())
         .await
         .unwrap();
@@ -85,7 +89,7 @@ async fn main() -> io::Result<()> {
     HttpServer::new( move || {
         App::new()
             .app_data(Data::new(create_schema()))
-            .app_data(Data::new(key.clone()))
+            .app_data(Data::new(KEY.clone()))
             .app_data(Data::new(Database {
                 pool: db_conn.clone(),
             }))

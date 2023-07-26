@@ -1469,6 +1469,7 @@ dependencies = [
  "jsonwebtoken",
  "juniper",
  "juniper_actix",
+ "lazy_static",
  "log",
  "minreq",
  "rand 0.8.5",
