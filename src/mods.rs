@@ -1,6 +1,6 @@
 use actix_web::{web, Responder, HttpRequest, post, HttpResponse};
 use chrono::{DateTime, Utc};
-use forge_lib::structs::forgemod::ForgeMod;
+
 use juniper::{FieldError, FieldResult, GraphQLObject};
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QuerySelect};
 use serde::{Serialize, Deserialize};
@@ -136,6 +136,6 @@ pub async fn find_by_author(db: &Database, author: Uuid) -> FieldResult<Vec<Mod>
 }
 
 #[post("/mods")]
-pub async fn create_mod(db: web::Data<Database>, payload: web::Payload, req: HttpRequest) -> impl Responder {
+pub async fn create_mod(_db: web::Data<Database>, _payload: web::Payload, _req: HttpRequest) -> impl Responder {
     HttpResponse::Ok().body("Hello world!")
 }

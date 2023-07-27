@@ -1,14 +1,13 @@
 use chrono::{DateTime, Utc};
 use entity::prelude::*;
 use juniper::{
-    graphql_value, FieldError, FieldResult, GraphQLEnum, GraphQLInputObject, GraphQLObject,
+    FieldError, FieldResult, GraphQLObject,
 };
 use serde::{Serialize, Deserialize};
-use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QuerySelect, Related};
+use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 use uuid::Uuid;
 
 use crate::{
-    mods::{self, Mod},
     Database,
 };
 

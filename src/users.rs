@@ -1,18 +1,18 @@
-use actix_web::{get, post, web, HttpRequest, HttpResponse, Responder};
+use actix_web::{post, web, HttpRequest, HttpResponse, Responder};
 use chrono::{DateTime, Utc};
 use entity::prelude::*;
 use juniper::{
-    graphql_value, FieldError, FieldResult, GraphQLEnum, GraphQLInputObject, GraphQLObject,
+    graphql_value, FieldError, FieldResult, GraphQLObject,
 };
-use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QuerySelect, Set};
+use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QuerySelect, Set};
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::json;
 use uuid::Uuid;
 
 use crate::{
-    auth::{self, validate_permissions, Authorization, JWTAuth, Permission},
+    auth::{validate_permissions, Authorization, JWTAuth, Permission},
     mods::{self, Mod},
-    Database, Key, KEY,
+    Database, KEY,
 };
 
 #[derive(GraphQLObject, Debug, Deserialize, Serialize)]
@@ -75,12 +75,12 @@ pub async fn find_all(
         .all(&db.pool)
         .await?;
 
-    let auser = auth.get_user(&db).await;
+    let auser = auth.get_user(db).await;
 
     let mut users = futures::future::join_all(
         users
             .into_iter()
-            .map(|user| async move { User::from_db_user(&db, user).await.unwrap() })
+            .map(|user| async move { User::from_db_user(db, user).await.unwrap() })
             .collect::<Vec<_>>(),
     )
     .await;
@@ -89,11 +89,9 @@ pub async fn find_all(
             users
                 .iter_mut()
                 .map(move |user| async move {
-                    if usr.id.as_bytes() != user.id.as_bytes() {
-                        if !validate_permissions(&user, Permission::VIEW_OTHER).await {
-                            user.email = None;
-                            user.api_key = None;
-                        }
+                    if usr.id.as_bytes() != user.id.as_bytes() && !validate_permissions(user, Permission::VIEW_OTHER).await {
+                        user.email = None;
+                        user.api_key = None;
                     }
                 })
                 .collect::<Vec<_>>(),
@@ -127,16 +125,14 @@ pub async fn find_by_id(db: &Database, _id: Uuid, auth: Authorization) -> FieldR
         ));
     }
 
-    let mut user = User::from_db_user(&db, user.unwrap()).await?;
+    let mut user = User::from_db_user(db, user.unwrap()).await?;
 
     // check auth
-    let auser = auth.get_user(&db).await;
+    let auser = auth.get_user(db).await;
     if let Some(usr) = auser {
-        if usr.id.as_bytes() != user.id.as_bytes() {
-            if !validate_permissions(&user, Permission::VIEW_OTHER).await {
-                user.email = None;
-                user.api_key = None;
-            }
+        if usr.id.as_bytes() != user.id.as_bytes() && !validate_permissions(&user, Permission::VIEW_OTHER).await {
+            user.email = None;
+            user.api_key = None;
         }
     }
 
@@ -150,7 +146,7 @@ pub struct UserAuthReq {
 
 #[post("/auth/github")]
 pub async fn user_auth(
-    req: HttpRequest,
+    _req: HttpRequest,
     data: web::Data<Database>,
     info: web::Query<UserAuthReq>,
 ) -> impl Responder {
@@ -166,8 +162,8 @@ pub async fn user_auth(
         .unwrap()
         .send()
         .unwrap();
-    let gat = gat.as_str().unwrap().split("&").collect::<Vec<_>>()[0]
-        .split("=")
+    let gat = gat.as_str().unwrap().split('&').collect::<Vec<_>>()[0]
+        .split('=')
         .collect::<Vec<_>>()[1]
         .to_string();
 

@@ -1,8 +1,4 @@
-use std::ops::{DerefMut, Deref};
-
-use actix_web_lab::sse::Data;
 use chrono::{DateTime, Utc};
-use juniper::{GraphQLValue, GraphQLEnum, GraphQLType, ScalarValue, DefaultScalarValue, DynGraphQLValue};
 use sea_orm::{EntityTrait, QueryFilter, ColumnTrait};
 use serde::{Serialize, Deserialize};
 use uuid::Uuid;
@@ -56,21 +52,21 @@ impl JWTAuth {
                     &jsonwebtoken::Validation::default(),
                 ) {
             Err(_) => { return None; },
-            Ok(t) => Some(t),
+            Ok(t) => if t.claims.is_valid() { Some(t) } else { None }
         };
 
         Some(token.unwrap().claims)
     }
 
     pub fn encode(&self, key: Key) -> String {
-        let token = jsonwebtoken::encode(
+        
+
+        jsonwebtoken::encode(
             &jsonwebtoken::Header::default(),
             &self,
             &jsonwebtoken::EncodingKey::from_secret(&key.0),
         )
-        .unwrap();
-
-        token
+        .unwrap()
     }
 }
 

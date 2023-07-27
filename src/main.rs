@@ -2,9 +2,9 @@ use std::{io, sync::Arc, path::Path};
 
 use actix_cors::Cors;
 use actix_web::{
-    get, middleware, route,
+    middleware,
     web::{self, Data},
-    App, HttpResponse, HttpServer, Responder, Error,
+    App, HttpResponse, HttpServer, Error,
 };
 use migration::MigratorTrait;
 use rand::Rng;
