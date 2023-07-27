@@ -1,4 +1,4 @@
-FROM debian:buster-slim
+FROM debian:bullseye-slim
 
 LABEL org.opencontainers.image.source=https://github.com/beat-forge/api
 EXPOSE 8000
