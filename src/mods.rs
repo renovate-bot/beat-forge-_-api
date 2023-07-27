@@ -83,7 +83,7 @@ impl Mod {
 
 #[derive(GraphQLObject, Debug, Deserialize, Serialize)]
 pub struct GModStats {
-    pub downloads: Option<i32>,
+    pub downloads: i32,
     // pub rating: f32,
     // pub rating_count: i32,
 }
@@ -91,7 +91,7 @@ pub struct GModStats {
 #[derive(GraphQLObject, Debug, Deserialize, Serialize)]
 pub struct ModCategory {
     pub name: String,
-    pub desc: Option<String>,
+    pub desc: String,
 }
 
 pub async fn find_all(db: &Database, limit: i32, offset: i32, version: Option<String>) -> FieldResult<Vec<Mod>> {

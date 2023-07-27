@@ -4,7 +4,7 @@ use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Serialize, Deserialize)]
-#[sea_orm(table_name = "versions_conflicts")]
+#[sea_orm(table_name = "version_dependents")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub version_id: Uuid,
@@ -18,16 +18,16 @@ pub enum Relation {
         belongs_to = "super::versions::Entity",
         from = "Column::Dependent",
         to = "super::versions::Column::Id",
-        on_update = "NoAction",
-        on_delete = "NoAction"
+        on_update = "Cascade",
+        on_delete = "Cascade"
     )]
     Versions2,
     #[sea_orm(
         belongs_to = "super::versions::Entity",
         from = "Column::VersionId",
         to = "super::versions::Column::Id",
-        on_update = "NoAction",
-        on_delete = "NoAction"
+        on_update = "Cascade",
+        on_delete = "Cascade"
     )]
     Versions1,
 }

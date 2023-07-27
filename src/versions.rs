@@ -22,7 +22,7 @@ pub struct GVersion {
 
 #[derive(GraphQLObject, Debug, Deserialize, Serialize)]
 pub struct GVersionStats {
-    pub downloads: Option<i32>,
+    pub downloads: i32,
     // pub rating: f32,
     // pub rating_count: i32,
 }
@@ -54,7 +54,7 @@ impl GVersion {
             version: v.version,
             supported_game_versions: versions,
             created_at: v.created_at.and_utc(),
-            approved: v.approved.unwrap_or(false),
+            approved: v.approved,
             stats: GVersionStats {
                 downloads: stats.downloads,
             },

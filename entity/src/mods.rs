@@ -8,15 +8,11 @@ use serde::{Deserialize, Serialize};
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: Uuid,
-    #[sea_orm(column_type = "Text", unique)]
+    #[sea_orm(unique)]
     pub slug: String,
-    #[sea_orm(column_type = "Text")]
     pub name: String,
-    #[sea_orm(column_type = "Text", nullable)]
     pub description: Option<String>,
-    #[sea_orm(column_type = "Text", nullable)]
     pub icon: Option<String>,
-    #[sea_orm(column_type = "Text", nullable)]
     pub cover: Option<String>,
     pub author: Uuid,
     pub category: Uuid,
@@ -32,24 +28,30 @@ pub enum Relation {
         belongs_to = "super::categories::Entity",
         from = "Column::Category",
         to = "super::categories::Column::Id",
-        on_update = "NoAction",
-        on_delete = "NoAction"
+        on_update = "Cascade",
+        on_delete = "Cascade"
     )]
     Categories,
+    #[sea_orm(has_many = "super::mod_beat_saber_versions::Entity")]
+    ModBeatSaberVersions,
     #[sea_orm(
         belongs_to = "super::mod_stats::Entity",
         from = "Column::Stats",
         to = "super::mod_stats::Column::Id",
-        on_update = "NoAction",
-        on_delete = "NoAction"
+        on_update = "Cascade",
+        on_delete = "Cascade"
     )]
     ModStats,
+    #[sea_orm(has_many = "super::mod_versions::Entity")]
+    ModVersions,
+    #[sea_orm(has_many = "super::user_mods::Entity")]
+    UserMods,
     #[sea_orm(
         belongs_to = "super::users::Entity",
         from = "Column::Author",
         to = "super::users::Column::Id",
-        on_update = "NoAction",
-        on_delete = "NoAction"
+        on_update = "Cascade",
+        on_delete = "Cascade"
     )]
     Users,
     #[sea_orm(has_many = "super::versions::Entity")]
@@ -62,27 +64,39 @@ impl Related<super::categories::Entity> for Entity {
     }
 }
 
+impl Related<super::mod_beat_saber_versions::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::ModBeatSaberVersions.def()
+    }
+}
+
 impl Related<super::mod_stats::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::ModStats.def()
     }
 }
 
-impl Related<super::versions::Entity> for Entity {
+impl Related<super::mod_versions::Entity> for Entity {
     fn to() -> RelationDef {
-        super::mod_versions::Relation::Versions.def()
+        Relation::ModVersions.def()
     }
-    fn via() -> Option<RelationDef> {
-        Some(super::mod_versions::Relation::Mods.def().rev())
+}
+
+impl Related<super::user_mods::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::UserMods.def()
     }
 }
 
 impl Related<super::users::Entity> for Entity {
     fn to() -> RelationDef {
-        super::users_mods::Relation::Users.def()
+        Relation::Users.def()
     }
-    fn via() -> Option<RelationDef> {
-        Some(super::users_mods::Relation::Mods.def().rev())
+}
+
+impl Related<super::versions::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Versions.def()
     }
 }
 

@@ -74,7 +74,7 @@ impl MigrationTrait for Migration {
         .iter()
         .map(|(n, d)| categories::ActiveModel {
             name: Set(n.to_string()),
-            description: Set(Some(d.to_string())),
+            description: Set(d.to_string()),
             ..Default::default()
         }.insert(&trans))
         .collect::<Vec<_>>();

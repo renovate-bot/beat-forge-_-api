@@ -250,6 +250,7 @@ impl MigrationTrait for Migration {
                             .not_null()
                             .unique_key(),
                     )
+                    .col(ColumnDef::new(Versions::ArtifactHash).string().not_null())
                     .col(ColumnDef::new(Versions::DownloadUrl).string().not_null())
                     .col(
                         ColumnDef::new(Versions::CreatedAt)
@@ -561,6 +562,7 @@ enum Versions {
     ModId,
     Version,
     Approved,
+    ArtifactHash,
     DownloadUrl,
     Stats,
     CreatedAt,
