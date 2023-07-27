@@ -94,7 +94,7 @@ pub struct ModCategory {
     pub desc: Option<String>,
 }
 
-pub async fn find_all(db: &Database, limit: i32, offset: i32) -> FieldResult<Vec<Mod>> {
+pub async fn find_all(db: &Database, limit: i32, offset: i32, version: Option<String>) -> FieldResult<Vec<Mod>> {
     let limit = limit as u64;
     let offset = offset as u64;
 

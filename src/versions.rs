@@ -7,9 +7,7 @@ use serde::{Serialize, Deserialize};
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 use uuid::Uuid;
 
-use crate::{
-    Database,
-};
+use crate::Database;
 
 #[derive(GraphQLObject, Debug, Deserialize, Serialize)]
 pub struct GVersion {
