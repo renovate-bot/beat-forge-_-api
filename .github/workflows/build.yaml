@@ -2,40 +2,32 @@ on: [push]
 
 name: Build and Test
 
+env:
+  SCCACHE_GHA_ENABLED: "true"
+  RUSTC_WRAPPER: "sccache"
+
 jobs:
-  build_and_test:
-    name: beatforge_api
+  build:
+    name: Build and Publish
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
     steps:
       - uses: actions/checkout@v2
-      
-      - name: Configure sccache
-        uses: actions/github-script@v6
-        with:
-          script: |
-            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
-            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
 
-      # cache dependencies
+      # cache with sccache
       - name: Cache
-        uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      
+        uses:
+          mozilla-actions/sccache-action@v0.0.3
+
           # login to ghcr.io
       - uses: docker/login-action@v1
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      
+
       # install rust
       - uses: actions-rs/toolchain@v1
         with:
@@ -45,13 +37,13 @@ jobs:
       # test and build
       - uses: actions-rs/cargo@v1
         with:
-          command: test
-          args: --all --release
+          command: build
+          args: --release
 
       - uses: actions-rs/cargo@v1
         with:
-          command: build
-          args: --release
+          command: test
+          args: --all --release
 
       # publish to ghcr.io and publish artifact
       - uses: docker/build-push-action@v2
@@ -63,5 +55,5 @@ jobs:
 
       - uses: actions/upload-artifact@v2
         with:
-          name: beatforge_api
-          path: target/release/
+          name: api-linux-amd64
+          path: target/release/gql-api
