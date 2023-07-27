@@ -6,21 +6,48 @@ jobs:
   build_and_test:
     name: beatforge_api
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
+      - uses: actions/checkout@v2
+      
+      - name: Configure sccache
+        uses: actions/github-script@v6
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+      # cache dependencies
+      - name: Cache
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      
+          # login to ghcr.io
       - uses: docker/login-action@v1
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: actions/checkout@v2
+      
+      # install rust
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
           override: true
+
+      # test and build
       - uses: actions-rs/cargo@v1
         with:
           command: test
           args: --all --release
+
       - uses: actions-rs/cargo@v1
         with:
           command: build
@@ -32,7 +59,8 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
-          tags: ghcr.io/beatforge/beatforge_api:latest
+          tags: ghcr.io/beat-forge/api:latest
+
       - uses: actions/upload-artifact@v2
         with:
           name: beatforge_api
