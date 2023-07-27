@@ -208,16 +208,7 @@ pub async fn user_auth(
 
     let jwt = JWTAuth::new(user).encode(*KEY.clone());
 
-    let mut res = HttpResponse::Ok();
-    res.cookie(
-        actix_web::cookie::Cookie::build("jwt", jwt)
-            .path("/")
-            .secure(true)
-            .http_only(true)
-            .finish(),
-    );
-
-    res.finish()
+    HttpResponse::Ok().json(json!({ "jwt": jwt }))
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
