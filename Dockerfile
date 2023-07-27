@@ -1,14 +1,25 @@
 FROM rust:latest
 
 LABEL org.opencontainers.image.source=https://github.com/beat-forge/api
+EXPOSE 8000
 
-# set the application directory
-WORKDIR /app
+# install the build dependencies
+WORKDIR /usr/src/app/source
 
-# copy the release binary
-COPY ./target/release/gql-api /app
+# copy the source tree 
+COPY . .
 
-EXPOSE 8080
+# build the application
+RUN cargo build --release
 
-# set the entrypoint
+# move to the root directory
+WORKDIR /usr/src/app/
+
+# copy the binary
+RUN cp ./source/target/release/api/gql-api .
+
+# remove the source tree
+RUN rm -rf ./source
+
+# set the startup command
 CMD ["./gql-api"]
