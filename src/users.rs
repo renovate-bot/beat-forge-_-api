@@ -12,7 +12,7 @@ use uuid::Uuid;
 use crate::{
     auth::{self, validate_permissions, Authorization, JWTAuth, Permission},
     mods::{self, Mod},
-    Database, Key,
+    Database, Key, KEY,
 };
 
 #[derive(GraphQLObject, Debug, Deserialize, Serialize)]
@@ -152,7 +152,6 @@ pub struct UserAuthReq {
 pub async fn user_auth(
     req: HttpRequest,
     data: web::Data<Database>,
-    key: web::Data<Key>,
     info: web::Query<UserAuthReq>,
 ) -> impl Responder {
     let code = &info.code;
@@ -166,7 +165,7 @@ pub async fn user_auth(
         }))
         .unwrap()
         .send()
-        .unwrap(); //.json::<Value>().unwrap()["access_token"].to_string();
+        .unwrap();
     let gat = gat.as_str().unwrap().split("&").collect::<Vec<_>>()[0]
         .split("=")
         .collect::<Vec<_>>()[1]
@@ -207,7 +206,7 @@ pub async fn user_auth(
         .unwrap()
         .unwrap();
 
-    let jwt = JWTAuth::new(user).encode(**key);
+    let jwt = JWTAuth::new(user).encode(*KEY.clone());
 
     let mut res = HttpResponse::Ok();
     res.cookie(

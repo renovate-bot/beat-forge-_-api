@@ -1,51 +1,6 @@
 use sea_orm_migration::{prelude::*, sea_orm::{Set, TransactionTrait, ActiveModelTrait, EntityTrait, ColumnTrait, QueryFilter}};
 use entity::{prelude::*, beat_saber_versions, categories};
 
-//INSERT INTO beat_saber_versions VALUES (DEFAULT, '1.31.0');
-// INSERT INTO beat_saber_versions VALUES (DEFAULT, '1.30.2');
-// INSERT INTO beat_saber_versions VALUES (DEFAULT, '1.30.0');
-// INSERT INTO beat_saber_versions VALUES (DEFAULT, '1.29.4');
-// INSERT INTO beat_saber_versions VALUES (DEFAULT, '1.26.0');
-// INSERT INTO beat_saber_versions VALUES (DEFAULT, '1.29.0');
-// INSERT INTO beat_saber_versions VALUES (DEFAULT, '1.28.0');
-// INSERT INTO beat_saber_versions VALUES (DEFAULT, '1.27.0');
-// INSERT INTO beat_saber_versions VALUES (DEFAULT, '1.26.2');
-// INSERT INTO beat_saber_versions VALUES (DEFAULT, '1.26.1');
-// INSERT INTO beat_saber_versions VALUES (DEFAULT, '1.21.0');
-// INSERT INTO beat_saber_versions VALUES (DEFAULT, '1.20.0');
-// INSERT INTO beat_saber_versions VALUES (DEFAULT, '1.19.0');
-// INSERT INTO beat_saber_versions VALUES (DEFAULT, '1.18.0');
-// INSERT INTO beat_saber_versions VALUES (DEFAULT, '1.17.0');
-// INSERT INTO beat_saber_versions VALUES (DEFAULT, '1.16.3');
-// INSERT INTO beat_saber_versions VALUES (DEFAULT, '1.16.1');
-// INSERT INTO beat_saber_versions VALUES (DEFAULT, '1.13.4');
-// INSERT INTO beat_saber_versions VALUES (DEFAULT, '1.13.2');
-// INSERT INTO beat_saber_versions VALUES (DEFAULT, '1.12.2');
-// INSERT INTO beat_saber_versions VALUES (DEFAULT, '1.11.0');
-// INSERT INTO beat_saber_versions VALUES (DEFAULT, '1.8.0');
-// INSERT INTO beat_saber_versions VALUES (DEFAULT, '1.6.1');
-// INSERT INTO beat_saber_versions VALUES (DEFAULT, '1.6.0');
-// INSERT INTO beat_saber_versions VALUES (DEFAULT, '1.5.0');
-// INSERT INTO beat_saber_versions VALUES (DEFAULT, '1.3.0');
-// INSERT INTO beat_saber_versions VALUES (DEFAULT, '1.1.1');
-// INSERT INTO beat_saber_versions VALUES (DEFAULT, '1.1.0');
-// INSERT INTO beat_saber_versions VALUES (DEFAULT, '1.0.0');
-// INSERT INTO beat_saber_versions VALUES (DEFAULT, '0.13.2');
-
-//INSERT INTO categories VALUES (DEFAULT, 'core', 'Mods that only depend on other core mods.');
-// INSERT INTO categories VALUES (DEFAULT, 'libraries', 'Mods that are used by other mods.');
-// INSERT INTO categories VALUES (DEFAULT, 'cosmetic', 'Mods that affect the appearance of the game.');
-// INSERT INTO categories VALUES (DEFAULT, 'gameplay', 'Mods that affect gameplay.');
-// INSERT INTO categories VALUES (DEFAULT, 'leaderboards', 'Mods that affect leaderboards.');
-// INSERT INTO categories VALUES (DEFAULT, 'lighting', 'Mods that affect lighting.');
-// INSERT INTO categories VALUES (DEFAULT, 'multiplayer', 'Mods that change online play.');
-// INSERT INTO categories VALUES (DEFAULT, 'accessibility', 'Mods that affect accessibility.');
-// INSERT INTO categories VALUES (DEFAULT, 'practice', 'Mods that are used for practice.');
-// INSERT INTO categories VALUES (DEFAULT, 'streaming', 'Mods that affect live streams.');
-// INSERT INTO categories VALUES (DEFAULT, 'text', 'Mods that change how text is displayed.');
-// INSERT INTO categories VALUES (DEFAULT, 'tweaks', 'Mods that tweak the gameplay experience.');
-// INSERT INTO categories VALUES (DEFAULT, 'ui', 'Mods that affect the ui.');
-// INSERT INTO categories VALUES (DEFAULT, 'other', 'Mods that do not fit into other categories.');
 const BEAT_SABER_VERSIONS: [&'static str; 30] = [
     "1.31.0",
     "1.30.2",

@@ -90,7 +90,6 @@ async fn main() -> io::Result<()> {
     HttpServer::new( move || {
         App::new()
             .app_data(Data::new(create_schema()))
-            .app_data(Data::new(KEY.clone()))
             .app_data(Data::new(Database {
                 pool: db_conn.clone(),
             }))
