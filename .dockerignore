@@ -1,4 +1,3 @@
-secret.key
+data/
 .env
-Cargo.lock
 target/
