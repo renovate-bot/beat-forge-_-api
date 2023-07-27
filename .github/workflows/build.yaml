@@ -53,7 +53,7 @@ jobs:
           push: true
           tags: ghcr.io/beat-forge/api:latest
 
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: api-linux-amd64
           path: target/release/gql-api
