@@ -45,6 +45,14 @@ jobs:
           command: test
           args: --all --release
 
+      - name: debug list of files in root
+        run: |
+          ls -la
+
+      - name: debug list of files in release
+        run: |
+          ls -la target/release
+
       # publish to ghcr.io and publish artifact
       - uses: docker/build-push-action@v2
         with:
