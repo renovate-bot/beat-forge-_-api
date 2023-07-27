@@ -59,7 +59,7 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
-          tags: ghcr.io/beatforge/beatforge_api:latest
+          tags: ghcr.io/beat-forge/api:latest
 
       - uses: actions/upload-artifact@v2
         with:
