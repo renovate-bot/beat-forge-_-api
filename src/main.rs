@@ -6,10 +6,7 @@ use actix_web::{
     web::{self, Data},
     App, HttpResponse, HttpServer, Responder, Error,
 };
-use actix_web_lab::respond::Html;
-use cached::once_cell::sync::Lazy;
-use futures::FutureExt;
-use juniper::http::{graphiql::graphiql_source, GraphQLRequest};
+use migration::MigratorTrait;
 use rand::Rng;
 
 mod schema;
@@ -85,6 +82,9 @@ async fn main() -> io::Result<()> {
     let db_conn = sea_orm::Database::connect(&std::env::var("DATABASE_URL").unwrap())
         .await
         .unwrap();
+
+    //migrate
+    migration::Migrator::up(&db_conn, None).await.unwrap();
 
     // Start HTTP server
     HttpServer::new( move || {

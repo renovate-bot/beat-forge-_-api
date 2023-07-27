@@ -54,13 +54,6 @@ impl QueryRoot {
     }
 }
 
-pub struct MutationRoot;
-
-// #[juniper::graphql_object(context = Database)]
-// impl MutationRoot {
-
-// }
-
 pub type Schema =
     RootNode<'static, QueryRoot, EmptyMutation<Database>, EmptySubscription<Database>>;
 

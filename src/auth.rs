@@ -97,7 +97,7 @@ impl Authorization {
     pub async fn get_user(&self, db: &Database) -> Option<entity::users::Model> {
         match self {
             Self::Session(s) => {
-                let auth = JWTAuth::decode(s.to_string(), *unsafe { KEY.clone() });
+                let auth = JWTAuth::decode(s.to_string(), *KEY.clone());
                 match auth {
                     Some(auth) => {
                         let user = entity::users::Entity::find_by_id(auth.user.id)

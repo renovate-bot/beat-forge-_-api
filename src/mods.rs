@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use forge_lib::structs::forgemod::ForgeMod;
 use juniper::{FieldError, FieldResult, GraphQLObject};
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QuerySelect};
 use serde::{Serialize, Deserialize};
@@ -105,4 +106,9 @@ pub async fn find_by_author(db: &Database, author: Uuid) -> FieldResult<Vec<Mod>
         .collect::<Vec<_>>();
 
     Ok(futures::future::join_all(mods).await)
+}
+
+pub async fn new_mod(db: &Database, forgemod: ForgeMod) -> FieldResult<Mod> {
+
+    todo!()
 }
