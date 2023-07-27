@@ -28,6 +28,7 @@ impl QueryRoot {
         limit: Option<i32>,
         offset: Option<i32>,
         auth: Option<String>,
+        version: Option<String>,
     ) -> FieldResult<Vec<User>> {
         if limit > Some(10) {
             return Err(juniper::FieldError::new(

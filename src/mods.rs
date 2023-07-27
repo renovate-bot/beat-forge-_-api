@@ -18,12 +18,27 @@ pub struct Mod {
     pub description: Option<String>,
     pub icon: Option<String>,
     pub cover: Option<String>,
-    pub author: Uuid,
+    pub author: ModAuthor,
     pub category: ModCategory,
     pub stats: GModStats,
     pub versions: Vec<GVersion>,
     pub updated_at: DateTime<Utc>,
     pub created_at: DateTime<Utc>,
+}
+
+#[derive(GraphQLObject, Debug, Deserialize, Serialize)]
+pub struct ModAuthor {
+    pub id: Uuid,
+    pub username: String,
+    pub display_name: Option<String>,
+
+    pub bio: Option<String>,
+    pub permissions: i32,
+    pub avatar: Option<String>,
+    pub banner: Option<String>,
+
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 impl Mod {
@@ -33,6 +48,7 @@ impl Mod {
             .await?
             .unwrap();
         let stats = ModStats::find_by_id(m.stats).one(&db.pool).await?.unwrap();
+        let author = Users::find_by_id(m.author).one(&db.pool).await?.unwrap();
         Ok(Mod {
             id: Uuid::from_bytes(*m.id.as_bytes()),
             slug: m.slug,
@@ -40,7 +56,17 @@ impl Mod {
             description: m.description,
             icon: m.icon,
             cover: m.cover,
-            author: Uuid::from_bytes(*m.author.as_bytes()),
+            author: ModAuthor { 
+                id: Uuid::from_bytes(*author.id.as_bytes()),
+                username: author.username,
+                display_name: author.display_name,
+                bio: author.bio,
+                permissions: author.permissions,
+                avatar: author.avatar,
+                banner: author.banner,
+                created_at: author.created_at.and_utc(),
+                updated_at: author.updated_at.and_utc(),
+            },
             category: ModCategory {
                 name: category.name,
                 desc: category.description,
