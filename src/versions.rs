@@ -15,6 +15,7 @@ pub struct GVersion {
     pub mod_id: Uuid,
     pub version: String,
     pub approved: bool,
+    pub download_url: String,
     pub supported_game_versions: Vec<String>,
     pub stats: GVersionStats,
     pub created_at: DateTime<Utc>,
@@ -55,6 +56,7 @@ impl GVersion {
             supported_game_versions: versions,
             created_at: v.created_at.and_utc(),
             approved: v.approved,
+            download_url: v.download_url,
             stats: GVersionStats {
                 downloads: stats.downloads,
             },
