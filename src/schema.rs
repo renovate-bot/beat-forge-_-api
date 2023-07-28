@@ -23,6 +23,7 @@ pub struct QueryRoot;
 
 #[juniper::graphql_object(context = Database)]
 impl QueryRoot {
+    #[cached::cached(time=120)]
     async fn user_by_id(db: &Database, id: Uuid, auth: Option<String>) -> FieldResult<User> {
         let db = db.pool.clone();
         let r = users::find_by_id(&db, id, Authorization::parse(auth)).await;
@@ -30,6 +31,7 @@ impl QueryRoot {
         r
     }
 
+    #[cached::cached(time=120)]
     async fn users(
         db: &Database,
         limit: Option<i32>,
@@ -53,6 +55,8 @@ impl QueryRoot {
         db.close().await.unwrap();
         r
     }
+
+    #[cached::cached(time=120)]
     async fn mods(
         db: &Database,
         limit: Option<i32>,
@@ -71,6 +75,8 @@ impl QueryRoot {
         db.close().await.unwrap();
         r
     }
+
+    #[cached::cached(time=120)]
     async fn mod_by_id(db: &Database, id: Uuid) -> FieldResult<Mod> {
         let db = db.pool.clone();
 
@@ -78,6 +84,8 @@ impl QueryRoot {
         db.close().await.unwrap();
         r
     }
+
+    #[cached::cached(time=120)]
     async fn mod_by_author(db: &Database, id: Uuid) -> FieldResult<Vec<Mod>> {
         let db = db.pool.clone();
 
@@ -86,6 +94,7 @@ impl QueryRoot {
         r
     }
 
+    #[cached::cached(time=120)]
     async fn categories(db: &Database) -> FieldResult<Vec<GCategory>> {
         let db = db.pool.clone();
 
@@ -103,6 +112,7 @@ impl QueryRoot {
         r
     }
 
+    #[cached::cached(time=120)]
     async fn beat_saber_versions(db: &Database) -> FieldResult<Vec<String>> {
         let db = db.pool.clone();
 
