@@ -20,11 +20,11 @@ use crate::schema::{create_schema, Schema};
 
 /// GraphiQL playground UI
 async fn graphiql_route() -> Result<HttpResponse, Error> {
-    juniper_actix::graphiql_handler("/graphgl", None).await
+    juniper_actix::graphiql_handler("/graphql", None).await
 }
 
 async fn playground_route() -> Result<HttpResponse, Error> {
-    juniper_actix::playground_handler("/graphgl", None).await
+    juniper_actix::playground_handler("/graphql", None).await
 }
 
 async fn graphql_route(
@@ -97,7 +97,7 @@ async fn main() -> io::Result<()> {
                 pool: db_conn.clone(),
             }))
             .service(
-                web::resource("/graphgl")
+                web::resource("/graphql")
                     .route(web::post().to(graphql_route))
                     .route(web::get().to(graphql_route)),
             )

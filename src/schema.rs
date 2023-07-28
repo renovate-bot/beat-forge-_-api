@@ -1,5 +1,6 @@
+use entity::prelude::*;
 use juniper::{
-    graphql_value, EmptyMutation, EmptySubscription, FieldResult, GraphQLEnum, RootNode,
+    graphql_value, EmptyMutation, EmptySubscription, FieldResult, GraphQLEnum, RootNode, GraphQLObject,
 };
 
 #[derive(GraphQLEnum)]
@@ -9,6 +10,7 @@ enum Episode {
     Jedi,
 }
 
+use sea_orm::EntityTrait;
 use uuid::Uuid;
 
 use crate::auth::Authorization;
@@ -64,6 +66,23 @@ impl QueryRoot {
     async fn mod_by_author(db: &Database, id: Uuid) -> FieldResult<Vec<Mod>> {
         mods::find_by_author(db, id).await
     }
+    
+    async fn categories(db: &Database) -> FieldResult<Vec<GCategory>> {
+        Ok(Categories::find().all(&db.pool).await.unwrap().iter().map(|c| GCategory {
+            name: c.name.clone(),
+            description: c.description.clone(),
+        }).collect::<Vec<_>>())
+    }
+
+    async fn beat_saber_versions(db: &Database) -> FieldResult<Vec<String>> {
+        Ok(BeatSaberVersions::find().all(&db.pool).await.unwrap().iter().map(|v| v.ver.clone()).collect::<Vec<_>>())
+    }
+}
+
+#[derive(GraphQLObject)]
+pub struct GCategory {
+    name: String,
+    description: String,
 }
 
 pub type Schema =
