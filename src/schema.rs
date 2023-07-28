@@ -1,6 +1,7 @@
 use entity::prelude::*;
 use juniper::{
-    graphql_value, EmptyMutation, EmptySubscription, FieldResult, GraphQLEnum, RootNode, GraphQLObject,
+    graphql_value, EmptyMutation, EmptySubscription, FieldResult, GraphQLEnum, GraphQLObject,
+    RootNode,
 };
 
 #[derive(GraphQLEnum)]
@@ -23,7 +24,10 @@ pub struct QueryRoot;
 #[juniper::graphql_object(context = Database)]
 impl QueryRoot {
     async fn user_by_id(db: &Database, id: Uuid, auth: Option<String>) -> FieldResult<User> {
-        users::find_by_id(db, id, Authorization::parse(auth)).await
+        let db = db.pool.clone();
+        let r = users::find_by_id(&db, id, Authorization::parse(auth)).await;
+        db.close().await.unwrap();
+        r
     }
 
     async fn users(
@@ -38,13 +42,16 @@ impl QueryRoot {
                 graphql_value!({ "limit": "Limit must be less than 10" }),
             ));
         }
-        users::find_all(
-            db,
+        let db = db.pool.clone();
+        let r = users::find_all(
+            &db,
             limit.unwrap_or(10),
             offset.unwrap_or(0),
             Authorization::parse(auth),
         )
-        .await
+        .await;
+        db.close().await.unwrap();
+        r
     }
     async fn mods(
         db: &Database,
@@ -58,24 +65,56 @@ impl QueryRoot {
                 graphql_value!({ "limit": "Limit must be less than 10" }),
             ));
         }
-        mods::find_all(db, limit.unwrap_or(10), offset.unwrap_or(0), version).await
+        let db = db.pool.clone();
+
+        let r = mods::find_all(&db, limit.unwrap_or(10), offset.unwrap_or(0), version).await;
+        db.close().await.unwrap();
+        r
     }
     async fn mod_by_id(db: &Database, id: Uuid) -> FieldResult<Mod> {
-        mods::find_by_id(db, id).await
+        let db = db.pool.clone();
+
+        let r = mods::find_by_id(&db, id).await;
+        db.close().await.unwrap();
+        r
     }
     async fn mod_by_author(db: &Database, id: Uuid) -> FieldResult<Vec<Mod>> {
-        mods::find_by_author(db, id).await
+        let db = db.pool.clone();
+
+        let r = mods::find_by_author(&db, id).await;
+        db.close().await.unwrap();
+        r
     }
-    
+
     async fn categories(db: &Database) -> FieldResult<Vec<GCategory>> {
-        Ok(Categories::find().all(&db.pool).await.unwrap().iter().map(|c| GCategory {
-            name: c.name.clone(),
-            description: c.description.clone(),
-        }).collect::<Vec<_>>())
+        let db = db.pool.clone();
+
+        let r = Ok(Categories::find()
+            .all(&db)
+            .await
+            .unwrap()
+            .iter()
+            .map(|c| GCategory {
+                name: c.name.clone(),
+                description: c.description.clone(),
+            })
+            .collect::<Vec<_>>());
+        db.close().await.unwrap();
+        r
     }
 
     async fn beat_saber_versions(db: &Database) -> FieldResult<Vec<String>> {
-        Ok(BeatSaberVersions::find().all(&db.pool).await.unwrap().iter().map(|v| v.ver.clone()).collect::<Vec<_>>())
+        let db = db.pool.clone();
+
+        let r = Ok(BeatSaberVersions::find()
+            .all(&db)
+            .await
+            .unwrap()
+            .iter()
+            .map(|v| v.ver.clone())
+            .collect::<Vec<_>>());
+        db.close().await.unwrap();
+        r
     }
 }
 

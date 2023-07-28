@@ -6,11 +6,13 @@ use crate::Database;
 
 #[get("/cdn/{slug}@{version}")]
 async fn cdn_get(db: web::Data<Database>, path: web::Path<(String, String)>) -> impl Responder {
+    let db = db.pool.clone();
+
     let (slug, version) = path.into_inner();
     dbg!(&slug, &version);
     let db_mod = Mods::find()
         .filter(entity::mods::Column::Slug.eq(&slug))
-        .one(&db.pool)
+        .one(&db)
         .await
         .unwrap();
 
@@ -18,7 +20,7 @@ async fn cdn_get(db: web::Data<Database>, path: web::Path<(String, String)>) -> 
         let db_version = Versions::find()
             .filter(entity::versions::Column::ModId.eq(db_mod.id))
             .filter(entity::versions::Column::Version.eq(&version))
-            .one(&db.pool)
+            .one(&db)
             .await
             .unwrap();
 

@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use sea_orm::{EntityTrait, QueryFilter, ColumnTrait};
+use sea_orm::{EntityTrait, QueryFilter, ColumnTrait, DatabaseConnection};
 use serde::{Serialize, Deserialize};
 use uuid::Uuid;
 
@@ -90,14 +90,14 @@ impl Authorization {
         }
     }
 
-    pub async fn get_user(&self, db: &Database) -> Option<entity::users::Model> {
+    pub async fn get_user(&self, db: &DatabaseConnection) -> Option<entity::users::Model> {
         match self {
             Self::Session(s) => {
                 let auth = JWTAuth::decode(s.to_string(), *KEY.clone());
                 match auth {
                     Some(auth) => {
                         let user = entity::users::Entity::find_by_id(auth.user.id)
-                            .one(&db.pool)
+                            .one(db)
                             .await
                             .unwrap()
                             .unwrap();
@@ -110,7 +110,7 @@ impl Authorization {
             Self::ApiKey(uuid) => {
                 let user = entity::users::Entity::find()
                     .filter(entity::users::Column::ApiKey.eq(sea_orm::prelude::Uuid::from_bytes(*uuid.as_bytes())))
-                    .one(&db.pool)
+                    .one(db)
                     .await
                     .unwrap()
                     .unwrap();

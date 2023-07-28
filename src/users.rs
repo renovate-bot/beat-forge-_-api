@@ -4,7 +4,7 @@ use entity::prelude::*;
 use juniper::{
     graphql_value, FieldError, FieldResult, GraphQLObject,
 };
-use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QuerySelect, Set};
+use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QuerySelect, Set, DatabaseConnection};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use uuid::Uuid;
@@ -39,7 +39,7 @@ pub struct User {
 }
 
 impl User {
-    async fn from_db_user(db: &Database, u: entity::users::Model) -> Result<Self, FieldError> {
+    async fn from_db_user(db: &DatabaseConnection, u: entity::users::Model) -> Result<Self, FieldError> {
         Ok(User {
             id: Uuid::from_bytes(*u.id.as_bytes()),
             github_id: u.github_id.to_string(),
@@ -61,7 +61,7 @@ impl User {
 }
 
 pub async fn find_all(
-    db: &Database,
+    db: &DatabaseConnection,
     limit: i32,
     offset: i32,
     auth: Authorization,
@@ -72,18 +72,25 @@ pub async fn find_all(
     let users = Users::find()
         .limit(Some(limit))
         .offset(Some(offset))
-        .all(&db.pool)
+        .all(db)
         .await?;
 
     let auser = auth.get_user(db).await;
 
-    let mut users = futures::future::join_all(
-        users
-            .into_iter()
-            .map(|user| async move { User::from_db_user(db, user).await.unwrap() })
-            .collect::<Vec<_>>(),
-    )
-    .await;
+    // let mut users = futures::future::join_all(
+    //     users
+    //         .into_iter()
+    //         .map(|user| async move { User::from_db_user(db, user).await.unwrap() })
+    //         .collect::<Vec<_>>(),
+    // )
+    // .await;
+    let mut _users = vec![];
+    for user in users {
+        _users.push(User::from_db_user(db, user).await.unwrap());
+    }
+
+    let mut users = _users;
+
     if let Some(usr) = &auser {
         futures::future::join_all(
             users
@@ -113,10 +120,10 @@ pub async fn find_all(
     Ok(users)
 }
 
-pub async fn find_by_id(db: &Database, _id: Uuid, auth: Authorization) -> FieldResult<User> {
+pub async fn find_by_id(db: &DatabaseConnection, _id: Uuid, auth: Authorization) -> FieldResult<User> {
     let id = sea_orm::prelude::Uuid::from_bytes(*_id.as_bytes());
 
-    let user = Users::find_by_id(id).one(&db.pool).await?;
+    let user = Users::find_by_id(id).one(db).await?;
 
     if user.is_none() {
         return Err(juniper::FieldError::new(
@@ -150,6 +157,8 @@ pub async fn user_auth(
     data: web::Data<Database>,
     info: web::Query<UserAuthReq>,
 ) -> impl Responder {
+    let db = data.pool.clone();
+
     let code = &info.code;
 
     let gat = minreq::post("https://github.com/login/oauth/access_token")
@@ -177,7 +186,7 @@ pub async fn user_auth(
 
     let mby_user = Users::find()
         .filter(entity::users::Column::GithubId.eq(github_user.id as i32))
-        .one(&data.pool)
+        .one(&db)
         .await
         .unwrap();
 
@@ -192,15 +201,17 @@ pub async fn user_auth(
             ..Default::default()
         };
 
-        Users::insert(usr).exec(&data.pool).await.unwrap();
+        Users::insert(usr).exec(&db).await.unwrap();
     }
 
     let user = Users::find()
         .filter(entity::users::Column::GithubId.eq(github_user.id as i32))
-        .one(&data.pool)
+        .one(&db)
         .await
         .unwrap()
         .unwrap();
+
+    db.close().await.unwrap();
 
     let jwt = JWTAuth::new(user).encode(*KEY.clone());
 

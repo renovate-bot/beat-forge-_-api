@@ -1,3 +1,5 @@
+use std::vec;
+
 use actix_web::{post, web, HttpRequest, HttpResponse, Responder};
 use chrono::{DateTime, Utc};
 
@@ -6,7 +8,8 @@ use futures::StreamExt;
 use juniper::{FieldError, FieldResult, GraphQLObject};
 use migration::OnConflict;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QuerySelect, Set, TransactionTrait,
+    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QuerySelect, Set,
+    TransactionTrait,
 };
 use semver::Version;
 use serde::{Deserialize, Serialize};
@@ -52,13 +55,13 @@ pub struct ModAuthor {
 }
 
 impl Mod {
-    async fn from_db_mod(db: &Database, m: entity::mods::Model) -> Result<Self, FieldError> {
-        let category = Categories::find_by_id(m.category)
-            .one(&db.pool)
-            .await?
-            .unwrap();
-        let stats = ModStats::find_by_id(m.stats).one(&db.pool).await?.unwrap();
-        let author = Users::find_by_id(m.author).one(&db.pool).await?.unwrap();
+    async fn from_db_mod(
+        db: &DatabaseConnection,
+        m: entity::mods::Model,
+    ) -> Result<Self, FieldError> {
+        let category = Categories::find_by_id(m.category).one(db).await?.unwrap();
+        let stats = ModStats::find_by_id(m.stats).one(db).await?.unwrap();
+        let author = Users::find_by_id(m.author).one(db).await?.unwrap();
         Ok(Mod {
             id: Uuid::from_bytes(*m.id.as_bytes()),
             slug: m.slug,
@@ -105,7 +108,7 @@ pub struct ModCategory {
 }
 
 pub async fn find_all(
-    db: &Database,
+    db: &DatabaseConnection,
     limit: i32,
     offset: i32,
     version: Option<String>,
@@ -116,7 +119,7 @@ pub async fn find_all(
     if let Some(version) = version {
         let verid = BeatSaberVersions::find()
             .filter(entity::beat_saber_versions::Column::Ver.eq(version))
-            .one(&db.pool)
+            .one(db)
             .await?
             .unwrap()
             .id;
@@ -124,55 +127,54 @@ pub async fn find_all(
         let mods = ModBeatSaberVersions::find()
             .filter(entity::mod_beat_saber_versions::Column::BeatSaberVersionId.eq(verid))
             .find_also_related(Mods)
-            .all(&db.pool)
+            .all(db)
             .await?
             .iter()
             .map(|v| v.1.clone().unwrap())
             .collect::<Vec<_>>();
 
-        Ok(futures::future::join_all(
-            mods.into_iter()
-                .map(|m| async move { Mod::from_db_mod(db, m).await.unwrap() })
-                .collect::<Vec<_>>(),
-        )
-        .await)
+        // Ok(futures::future::join_all(
+        //     mods.into_iter()
+        //         .map(|m| async move { Mod::from_db_mod(db2, m).await.unwrap() })
+        //         .collect::<Vec<_>>(),
+        // )
+        // .await)
+        let mut r = vec![];
+        for m in mods {
+            r.push(Mod::from_db_mod(db, m).await.unwrap());
+        }
+        Ok(r)
     } else {
-        let mods = Mods::find()
-            .limit(limit)
-            .offset(offset)
-            .all(&db.pool)
-            .await?;
+        let mods = Mods::find().limit(limit).offset(offset).all(db).await?;
 
-        Ok(futures::future::join_all(
-            mods.into_iter()
-                .map(|m| async move { Mod::from_db_mod(db, m).await.unwrap() })
-                .collect::<Vec<_>>(),
-        )
-        .await)
+        let mut r = vec![];
+        for m in mods {
+            r.push(Mod::from_db_mod(db, m).await.unwrap());
+        }
+        Ok(r)
     }
 }
 
-pub async fn find_by_id(db: &Database, id: Uuid) -> FieldResult<Mod> {
+pub async fn find_by_id(db: &DatabaseConnection, id: Uuid) -> FieldResult<Mod> {
     let id = sea_orm::prelude::Uuid::from_bytes(*id.as_bytes());
-    let m = Mods::find_by_id(id).one(&db.pool).await?.unwrap();
+    let m = Mods::find_by_id(id).one(db).await?.unwrap();
 
     Mod::from_db_mod(db, m).await
 }
 
-pub async fn find_by_author(db: &Database, author: Uuid) -> FieldResult<Vec<Mod>> {
+pub async fn find_by_author(db: &DatabaseConnection, author: Uuid) -> FieldResult<Vec<Mod>> {
     let author = sea_orm::prelude::Uuid::from_bytes(*author.as_bytes());
 
     let mods = Mods::find()
         .filter(entity::mods::Column::Author.eq(author))
-        .all(&db.pool)
+        .all(db)
         .await?;
 
-    let mods = mods
-        .into_iter()
-        .map(|m| async move { Mod::from_db_mod(db, m).await.unwrap() })
-        .collect::<Vec<_>>();
-
-    Ok(futures::future::join_all(mods).await)
+    let mut r = vec![];
+    for m in mods {
+        r.push(Mod::from_db_mod(db, m).await.unwrap());
+    }
+    Ok(r)
 }
 
 #[post("/mods")]
@@ -181,6 +183,8 @@ pub async fn create_mod(
     mut payload: web::Payload,
     req: HttpRequest,
 ) -> impl Responder {
+    let db = db.pool.clone();
+
     let auth = req
         .headers()
         .get("Authorization")
@@ -210,7 +214,7 @@ pub async fn create_mod(
 
     let db_cata = Categories::find()
         .filter(entity::categories::Column::Name.eq(forgemod.manifest.category.clone().to_string()))
-        .one(&db.pool)
+        .one(&db)
         .await
         .unwrap();
 
@@ -220,7 +224,7 @@ pub async fn create_mod(
     } else {
         Categories::find()
             .filter(entity::categories::Column::Name.eq("other"))
-            .one(&db.pool)
+            .one(&db)
             .await
             .unwrap()
             .unwrap()
@@ -228,7 +232,7 @@ pub async fn create_mod(
 
     let v_req = forgemod.manifest.game_version.clone();
     let vers = BeatSaberVersions::find()
-        .all(&db.pool)
+        .all(&db)
         .await
         .unwrap()
         .into_iter()
@@ -242,13 +246,13 @@ pub async fn create_mod(
     // see if mod exists; if it does add a new version; if it doesn't create a new mod
     let mby_mod = Mods::find()
         .filter(entity::mods::Column::Slug.eq(forgemod.manifest._id.clone()))
-        .one(&db.pool)
+        .one(&db)
         .await
         .unwrap();
 
     let v_id;
 
-    let trans = db.pool.begin().await.unwrap();
+    let trans = db.begin().await.unwrap();
 
     if let Some(db_mod) = mby_mod {
         let db_mod = db_mod.id;
@@ -286,7 +290,12 @@ pub async fn create_mod(
             //todo: artifact hash
             artifact_hash: Set("".to_string()),
             //todo: download url
-            download_url: Set(format!("{}/cdn/{}@{}", std::env::var("DOWNLOAD_URL").unwrap(), forgemod.manifest._id, forgemod.manifest.version.clone().to_string())),
+            download_url: Set(format!(
+                "{}/cdn/{}@{}",
+                std::env::var("DOWNLOAD_URL").unwrap(),
+                forgemod.manifest._id,
+                forgemod.manifest.version.clone().to_string()
+            )),
             ..Default::default()
         }
         .insert(&trans)
@@ -411,7 +420,12 @@ pub async fn create_mod(
             //todo: artifact hash
             artifact_hash: Set("".to_string()),
             //todo: download url
-            download_url: Set(format!("{}/cdn/{}@{}", std::env::var("DOWNLOAD_URL").unwrap(), forgemod.manifest._id, forgemod.manifest.version.clone().to_string())),
+            download_url: Set(format!(
+                "{}/cdn/{}@{}",
+                std::env::var("DOWNLOAD_URL").unwrap(),
+                forgemod.manifest._id,
+                forgemod.manifest.version.clone().to_string()
+            )),
             ..Default::default()
         }
         .insert(&trans)
