@@ -246,6 +246,8 @@ pub async fn create_mod(
         .await
         .unwrap();
 
+    let v_id;
+
     let trans = db.pool.begin().await.unwrap();
 
     if let Some(db_mod) = mby_mod {
@@ -284,7 +286,7 @@ pub async fn create_mod(
             //todo: artifact hash
             artifact_hash: Set("".to_string()),
             //todo: download url
-            download_url: Set("".to_string()),
+            download_url: Set(format!("{}/cdn/{}@{}", std::env::var("DOWNLOAD_URL").unwrap(), forgemod.manifest._id, forgemod.manifest.version.clone().to_string())),
             ..Default::default()
         }
         .insert(&trans)
@@ -351,6 +353,7 @@ pub async fn create_mod(
                 .unwrap();
             }
         }
+        v_id = version;
     } else {
         let mod_stats = entity::mod_stats::ActiveModel {
             ..Default::default()
@@ -408,7 +411,7 @@ pub async fn create_mod(
             //todo: artifact hash
             artifact_hash: Set("".to_string()),
             //todo: download url
-            download_url: Set("".to_string()),
+            download_url: Set(format!("{}/cdn/{}@{}", std::env::var("DOWNLOAD_URL").unwrap(), forgemod.manifest._id, forgemod.manifest.version.clone().to_string())),
             ..Default::default()
         }
         .insert(&trans)
@@ -483,7 +486,19 @@ pub async fn create_mod(
                 .unwrap();
             }
         }
+        v_id = version;
     }
+
+    let db_id = Mods::find()
+        .filter(entity::mods::Column::Slug.eq(forgemod.manifest._id.clone()))
+        .one(&trans)
+        .await
+        .unwrap()
+        .unwrap()
+        .id;
+
+    let _ = std::fs::create_dir(format!("./data/cdn/{}", db_id));
+    std::fs::write(format!("./data/cdn/{}/{}.forgemod", db_id, v_id), buf).unwrap();
 
     trans.commit().await.unwrap();
     HttpResponse::Created().finish()

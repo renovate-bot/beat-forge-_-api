@@ -14,6 +14,7 @@ mod users;
 mod mods;
 mod versions;
 mod auth;
+mod cdn;
 
 use crate::schema::{create_schema, Schema};
 
@@ -83,6 +84,8 @@ async fn main() -> io::Result<()> {
         .await
         .unwrap();
 
+    let _ = std::fs::create_dir(Path::new("./data/cdn"));
+
     //migrate
     migration::Migrator::up(&db_conn, None).await.unwrap();
 
@@ -102,6 +105,7 @@ async fn main() -> io::Result<()> {
             .service(web::resource("/graphiql").route(web::get().to(graphiql_route)))
             .service(users::user_auth)
             .service(mods::create_mod)
+            .service(cdn::cdn_get)
             // the graphiql UI requires CORS to be enabled
             .wrap(Cors::permissive())
             .wrap(middleware::Logger::default())
