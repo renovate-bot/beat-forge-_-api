@@ -101,6 +101,7 @@ async fn main() -> io::Result<()> {
             .service(web::resource("/playground").route(web::get().to(playground_route)))
             .service(web::resource("/graphiql").route(web::get().to(graphiql_route)))
             .service(users::user_auth)
+            .service(mods::create_mod)
             // the graphiql UI requires CORS to be enabled
             .wrap(Cors::permissive())
             .wrap(middleware::Logger::default())

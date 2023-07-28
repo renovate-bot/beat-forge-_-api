@@ -1499,6 +1499,7 @@ dependencies = [
  "minreq",
  "rand 0.8.5",
  "sea-orm",
+ "semver",
  "serde",
  "serde_json",
  "uuid 0.8.2",

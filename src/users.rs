@@ -15,7 +15,7 @@ use crate::{
     Database, KEY,
 };
 
-#[derive(GraphQLObject, Debug, Deserialize, Serialize)]
+#[derive(GraphQLObject, Debug, Deserialize, Serialize, Clone)]
 pub struct User {
     pub id: Uuid,
     pub github_id: String,
@@ -89,7 +89,7 @@ pub async fn find_all(
             users
                 .iter_mut()
                 .map(move |user| async move {
-                    if usr.id.as_bytes() != user.id.as_bytes() && !validate_permissions(user, Permission::VIEW_OTHER).await {
+                    if usr.id.as_bytes() != user.id.as_bytes() && !validate_permissions(user.clone(), Permission::VIEW_OTHER).await {
                         user.email = None;
                         user.api_key = None;
                     }

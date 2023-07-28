@@ -14,6 +14,7 @@ pub struct Model {
     pub description: Option<String>,
     pub icon: Option<String>,
     pub cover: Option<String>,
+    pub website: Option<String>,
     pub author: Uuid,
     pub category: Uuid,
     #[sea_orm(unique)]

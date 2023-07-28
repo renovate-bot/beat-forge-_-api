@@ -1,16 +1,26 @@
-use actix_web::{web, Responder, HttpRequest, post, HttpResponse};
+use actix_web::{post, web, HttpRequest, HttpResponse, Responder};
 use chrono::{DateTime, Utc};
 
+use forge_lib::structs::forgemod::ForgeMod;
+use futures::StreamExt;
 use juniper::{FieldError, FieldResult, GraphQLObject};
-use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QuerySelect};
-use serde::{Serialize, Deserialize};
+use migration::OnConflict;
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QuerySelect, Set, TransactionTrait,
+};
+use semver::Version;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use entity::prelude::*;
 
-use crate::{Database, versions::{GVersion, self}};
+use crate::{
+    auth::{validate_permissions, Authorization, Permission},
+    versions::{self, GVersion},
+    Database,
+};
 
-#[derive(GraphQLObject, Debug, Deserialize, Serialize)]
+#[derive(GraphQLObject, Debug, Deserialize, Serialize, Clone)]
 pub struct Mod {
     pub id: Uuid,
     pub slug: String,
@@ -26,7 +36,7 @@ pub struct Mod {
     pub created_at: DateTime<Utc>,
 }
 
-#[derive(GraphQLObject, Debug, Deserialize, Serialize)]
+#[derive(GraphQLObject, Debug, Deserialize, Serialize, Clone)]
 pub struct ModAuthor {
     pub id: Uuid,
     pub username: String,
@@ -56,7 +66,7 @@ impl Mod {
             description: m.description,
             icon: m.icon,
             cover: m.cover,
-            author: ModAuthor { 
+            author: ModAuthor {
                 id: Uuid::from_bytes(*author.id.as_bytes()),
                 username: author.username,
                 display_name: author.display_name,
@@ -81,35 +91,65 @@ impl Mod {
     }
 }
 
-#[derive(GraphQLObject, Debug, Deserialize, Serialize)]
+#[derive(GraphQLObject, Debug, Deserialize, Serialize, Clone)]
 pub struct GModStats {
     pub downloads: i32,
     // pub rating: f32,
     // pub rating_count: i32,
 }
 
-#[derive(GraphQLObject, Debug, Deserialize, Serialize)]
+#[derive(GraphQLObject, Debug, Deserialize, Serialize, Clone)]
 pub struct ModCategory {
     pub name: String,
     pub desc: String,
 }
 
-pub async fn find_all(db: &Database, limit: i32, offset: i32, version: Option<String>) -> FieldResult<Vec<Mod>> {
+pub async fn find_all(
+    db: &Database,
+    limit: i32,
+    offset: i32,
+    version: Option<String>,
+) -> FieldResult<Vec<Mod>> {
     let limit = limit as u64;
     let offset = offset as u64;
 
-    let mods = Mods::find()
-        .limit(limit)
-        .offset(offset)
-        .all(&db.pool)
-        .await?;
+    if let Some(version) = version {
+        let verid = BeatSaberVersions::find()
+            .filter(entity::beat_saber_versions::Column::Ver.eq(version))
+            .one(&db.pool)
+            .await?
+            .unwrap()
+            .id;
 
-    let mods = mods
-        .into_iter()
-        .map(|m| async move { Mod::from_db_mod(db, m).await.unwrap() })
-        .collect::<Vec<_>>();
+        let mods = ModBeatSaberVersions::find()
+            .filter(entity::mod_beat_saber_versions::Column::BeatSaberVersionId.eq(verid))
+            .find_also_related(Mods)
+            .all(&db.pool)
+            .await?
+            .iter()
+            .map(|v| v.1.clone().unwrap())
+            .collect::<Vec<_>>();
 
-    Ok(futures::future::join_all(mods).await)
+        Ok(futures::future::join_all(
+            mods.into_iter()
+                .map(|m| async move { Mod::from_db_mod(db, m).await.unwrap() })
+                .collect::<Vec<_>>(),
+        )
+        .await)
+    } else {
+        let mods = Mods::find()
+            .limit(limit)
+            .offset(offset)
+            .all(&db.pool)
+            .await?;
+
+        Ok(futures::future::join_all(
+            mods.into_iter()
+                .map(|m| async move { Mod::from_db_mod(db, m).await.unwrap() })
+                .collect::<Vec<_>>(),
+        )
+        .await)
+    }
 }
 
 pub async fn find_by_id(db: &Database, id: Uuid) -> FieldResult<Mod> {
@@ -136,6 +176,315 @@ pub async fn find_by_author(db: &Database, author: Uuid) -> FieldResult<Vec<Mod>
 }
 
 #[post("/mods")]
-pub async fn create_mod(_db: web::Data<Database>, _payload: web::Payload, _req: HttpRequest) -> impl Responder {
-    HttpResponse::Ok().body("Hello world!")
+pub async fn create_mod(
+    db: web::Data<Database>,
+    mut payload: web::Payload,
+    req: HttpRequest,
+) -> impl Responder {
+    let auth = req
+        .headers()
+        .get("Authorization")
+        .unwrap()
+        .to_str()
+        .unwrap();
+    let auser_id;
+    if auth.starts_with("Bearer") {
+        let auth = Authorization::parse(Some(auth.split(" ").collect::<Vec<_>>()[1].to_string()));
+        let user = auth.get_user(&db).await.unwrap();
+        if !validate_permissions(&user, Permission::CREATE_MOD).await {
+            return HttpResponse::Unauthorized().body("Unauthorized");
+        }
+        auser_id = user.id;
+    } else {
+        return HttpResponse::Unauthorized().body("Unauthorized");
+    }
+
+    let mut buf = Vec::new();
+
+    while let Some(item) = payload.next().await {
+        let item = item.unwrap();
+        buf.extend_from_slice(&item);
+    }
+
+    let forgemod = ForgeMod::try_from(&buf[..]).unwrap();
+
+    let db_cata = Categories::find()
+        .filter(entity::categories::Column::Name.eq(forgemod.manifest.category.clone().to_string()))
+        .one(&db.pool)
+        .await
+        .unwrap();
+
+    // if cata does not exist, default to other
+    let db_cata = if let Some(db_cata) = db_cata {
+        db_cata
+    } else {
+        Categories::find()
+            .filter(entity::categories::Column::Name.eq("other"))
+            .one(&db.pool)
+            .await
+            .unwrap()
+            .unwrap()
+    };
+
+    let v_req = forgemod.manifest.game_version.clone();
+    let vers = BeatSaberVersions::find()
+        .all(&db.pool)
+        .await
+        .unwrap()
+        .into_iter()
+        .filter(|v| v_req.matches(&Version::parse(&v.ver).unwrap()))
+        .collect::<Vec<_>>();
+
+    if vers.len() == 0 {
+        return HttpResponse::BadRequest().body("Invalid game version");
+    }
+
+    // see if mod exists; if it does add a new version; if it doesn't create a new mod
+    let mby_mod = Mods::find()
+        .filter(entity::mods::Column::Slug.eq(forgemod.manifest._id.clone()))
+        .one(&db.pool)
+        .await
+        .unwrap();
+
+    let trans = db.pool.begin().await.unwrap();
+
+    if let Some(db_mod) = mby_mod {
+        let db_mod = db_mod.id;
+        for v in &vers {
+            let vm = entity::mod_beat_saber_versions::ActiveModel {
+                mod_id: Set(db_mod),
+                beat_saber_version_id: Set(v.id),
+            };
+
+            //see if vm exists
+            if ModBeatSaberVersions::find()
+                .filter(entity::mod_beat_saber_versions::Column::ModId.eq(db_mod))
+                .filter(entity::mod_beat_saber_versions::Column::BeatSaberVersionId.eq(v.id))
+                .one(&trans)
+                .await
+                .unwrap()
+                .is_none()
+            {
+                vm.insert(&trans).await.unwrap();
+            }
+        }
+
+        let version_stats = entity::version_stats::ActiveModel {
+            ..Default::default()
+        }
+        .insert(&trans)
+        .await
+        .unwrap()
+        .id;
+
+        let version = entity::versions::ActiveModel {
+            mod_id: Set(db_mod),
+            version: Set(forgemod.manifest.version.clone().to_string()),
+            stats: Set(version_stats),
+            //todo: artifact hash
+            artifact_hash: Set("".to_string()),
+            //todo: download url
+            download_url: Set("".to_string()),
+            ..Default::default()
+        }
+        .insert(&trans)
+        .await
+        .unwrap()
+        .id;
+
+        for v in &vers {
+            let _ = entity::version_beat_saber_versions::ActiveModel {
+                version_id: Set(version),
+                beat_saber_version_id: Set(v.id),
+            }
+            .insert(&trans)
+            .await
+            .unwrap();
+        }
+
+        for conflict in forgemod.manifest.conflicts {
+            let c_ver = Versions::find()
+                .filter(entity::versions::Column::ModId.eq(db_mod))
+                .all(&trans)
+                .await
+                .unwrap()
+                .into_iter()
+                .filter(|c| {
+                    conflict
+                        .version
+                        .matches(&Version::parse(&c.version).unwrap())
+                })
+                .collect::<Vec<_>>();
+
+            for c in c_ver {
+                let _ = entity::version_conflicts::ActiveModel {
+                    version_id: Set(version),
+                    dependent: Set(c.id),
+                }
+                .insert(&trans)
+                .await
+                .unwrap();
+            }
+        }
+
+        for dependent in forgemod.manifest.depends {
+            let d_ver = Versions::find()
+                .filter(entity::versions::Column::ModId.eq(db_mod))
+                .all(&trans)
+                .await
+                .unwrap()
+                .into_iter()
+                .filter(|d| {
+                    dependent
+                        .version
+                        .matches(&Version::parse(&d.version).unwrap())
+                })
+                .collect::<Vec<_>>();
+
+            for d in d_ver {
+                let _ = entity::version_dependents::ActiveModel {
+                    version_id: Set(version),
+                    dependent: Set(d.id),
+                }
+                .insert(&trans)
+                .await
+                .unwrap();
+            }
+        }
+    } else {
+        let mod_stats = entity::mod_stats::ActiveModel {
+            ..Default::default()
+        }
+        .insert(&trans)
+        .await
+        .unwrap()
+        .id;
+
+        let db_mod = entity::mods::ActiveModel {
+            slug: Set(forgemod.manifest._id.clone()),
+            name: Set(forgemod.manifest.name.clone()),
+            author: Set(auser_id),
+            description: Set(Some(forgemod.manifest.description.clone())),
+            website: Set(Some(forgemod.manifest.website.clone())),
+            category: Set(db_cata.id),
+            stats: Set(mod_stats),
+            ..Default::default()
+        }
+        .insert(&trans)
+        .await
+        .unwrap()
+        .id;
+
+        entity::user_mods::ActiveModel {
+            user_id: Set(auser_id),
+            mod_id: Set(db_mod),
+        }
+        .insert(&trans)
+        .await
+        .unwrap();
+
+        for v in &vers {
+            let _ = entity::mod_beat_saber_versions::ActiveModel {
+                mod_id: Set(db_mod),
+                beat_saber_version_id: Set(v.id),
+            }
+            .insert(&trans)
+            .await
+            .unwrap();
+        }
+
+        let version_stats = entity::version_stats::ActiveModel {
+            ..Default::default()
+        }
+        .insert(&trans)
+        .await
+        .unwrap()
+        .id;
+
+        let version = entity::versions::ActiveModel {
+            mod_id: Set(db_mod),
+            version: Set(forgemod.manifest.version.clone().to_string()),
+            stats: Set(version_stats),
+            //todo: artifact hash
+            artifact_hash: Set("".to_string()),
+            //todo: download url
+            download_url: Set("".to_string()),
+            ..Default::default()
+        }
+        .insert(&trans)
+        .await
+        .unwrap()
+        .id;
+
+        for v in &vers {
+            let _ = entity::version_beat_saber_versions::ActiveModel {
+                version_id: Set(version),
+                beat_saber_version_id: Set(v.id),
+            }
+            .insert(&trans)
+            .await
+            .unwrap();
+        }
+
+        entity::mod_versions::ActiveModel {
+            mod_id: Set(db_mod),
+            version_id: Set(version),
+        }
+        .insert(&trans)
+        .await
+        .unwrap();
+
+        for conflict in forgemod.manifest.conflicts {
+            let c_ver = Versions::find()
+                .filter(entity::versions::Column::ModId.eq(db_mod))
+                .all(&trans)
+                .await
+                .unwrap()
+                .into_iter()
+                .filter(|c| {
+                    conflict
+                        .version
+                        .matches(&Version::parse(&c.version).unwrap())
+                })
+                .collect::<Vec<_>>();
+
+            for c in c_ver {
+                let _ = entity::version_conflicts::ActiveModel {
+                    version_id: Set(version),
+                    dependent: Set(c.id),
+                }
+                .insert(&trans)
+                .await
+                .unwrap();
+            }
+        }
+
+        for dependent in forgemod.manifest.depends {
+            let d_ver = Versions::find()
+                .filter(entity::versions::Column::ModId.eq(db_mod))
+                .all(&trans)
+                .await
+                .unwrap()
+                .into_iter()
+                .filter(|d| {
+                    dependent
+                        .version
+                        .matches(&Version::parse(&d.version).unwrap())
+                })
+                .collect::<Vec<_>>();
+
+            for d in d_ver {
+                let _ = entity::version_dependents::ActiveModel {
+                    version_id: Set(version),
+                    dependent: Set(d.id),
+                }
+                .insert(&trans)
+                .await
+                .unwrap();
+            }
+        }
+    }
+
+    trans.commit().await.unwrap();
+    HttpResponse::Created().finish()
 }

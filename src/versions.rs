@@ -9,7 +9,7 @@ use uuid::Uuid;
 
 use crate::Database;
 
-#[derive(GraphQLObject, Debug, Deserialize, Serialize)]
+#[derive(GraphQLObject, Debug, Deserialize, Serialize, Clone)]
 pub struct GVersion {
     pub id: Uuid,
     pub mod_id: Uuid,
@@ -20,7 +20,7 @@ pub struct GVersion {
     pub created_at: DateTime<Utc>,
 }
 
-#[derive(GraphQLObject, Debug, Deserialize, Serialize)]
+#[derive(GraphQLObject, Debug, Deserialize, Serialize, Clone)]
 pub struct GVersionStats {
     pub downloads: i32,
     // pub rating: f32,

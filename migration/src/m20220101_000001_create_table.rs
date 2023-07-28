@@ -184,6 +184,7 @@ impl MigrationTrait for Migration {
                     .col(ColumnDef::new(Mods::Author).uuid().not_null())
                     .col(ColumnDef::new(Mods::Category).uuid().not_null())
                     .col(ColumnDef::new(Mods::Stats).uuid().not_null().unique_key())
+                    .col(ColumnDef::new(Mods::Website).string().null())
                     .col(
                         ColumnDef::new(Mods::CreatedAt)
                             .date_time()
@@ -549,6 +550,7 @@ enum Mods {
     Icon,
     Cover,
     Author,
+    Website,
     Category,
     Stats,
     CreatedAt,
