@@ -9,7 +9,6 @@ async fn cdn_get(db: web::Data<Database>, path: web::Path<(String, String)>) -> 
     let db = db.pool.clone();
 
     let (slug, version) = path.into_inner();
-    dbg!(&slug, &version);
     let db_mod = Mods::find()
         .filter(entity::mods::Column::Slug.eq(&slug))
         .one(&db)

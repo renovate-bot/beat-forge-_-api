@@ -32,13 +32,9 @@ async fn graphql_route(
     req: actix_web::HttpRequest,
     payload: actix_web::web::Payload,
     data: web::Data<Schema>,
+    db: web::Data<Database>,
 ) -> Result<HttpResponse, Error> {
-    let database = Database {
-        pool: sea_orm::Database::connect(&std::env::var("DATABASE_URL").unwrap())
-            .await
-            .unwrap(),
-    };
-    juniper_actix::graphql_handler(&data, &database, req, payload).await
+    juniper_actix::graphql_handler(&data, &db, req, payload).await
 }
 
 #[derive(Clone)]
@@ -102,9 +98,13 @@ async fn main() -> io::Result<()> {
     log::info!("GraphiQL playground: http://localhost:8080/graphiql");
     log::info!("Playground: http://localhost:8080/playground");
 
-    let db_conn = sea_orm::Database::connect(&std::env::var("DATABASE_URL").unwrap())
-        .await
-        .unwrap();
+    let mut db_conf = sea_orm::ConnectOptions::new(std::env::var("DATABASE_URL").unwrap());
+
+    db_conf.max_connections(20);
+    db_conf.sqlx_logging(true);
+    db_conf.sqlx_logging_level(log::LevelFilter::Debug);
+
+    let db_conn = sea_orm::Database::connect(db_conf).await.unwrap();
 
     let _ = std::fs::create_dir(Path::new("./data/cdn"));
 
