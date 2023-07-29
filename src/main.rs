@@ -4,10 +4,11 @@ use actix_cors::Cors;
 use actix_web::{
     middleware,
     web::{self, Data},
-    App, HttpResponse, HttpServer, Error,
+    App, HttpResponse, HttpServer, Error, get, Responder,
 };
 use migration::MigratorTrait;
 use rand::Rng;
+use sea_orm::{EntityTrait, PaginatorTrait};
 
 mod schema;
 mod users;
@@ -63,11 +64,32 @@ lazy_static::lazy_static! {
     };
 }
 
-// #[derive(Clone)]
-// pub struct AppState {
-//     db: Database,
-//     schema: Arc<Schema>,
-// }
+#[get("/")]
+async fn index(data: web::Data<Database>) -> impl Responder {
+    let db = data.pool.clone();
+    let user_count = entity::users::Entity::find().count(&db).await.unwrap();
+    let mod_count = entity::mods::Entity::find().count(&db).await.unwrap();
+
+    let mut res = String::new();
+    res.push_str("<!DOCTYPE html><html><body style=\"background-color: #18181b; color: #ffffff\">");
+    res.push_str(&format!("<p>Currently running forge-api version {}.<p>", env!("CARGO_PKG_VERSION")));
+
+    res.push_str("<br>");
+
+    res.push_str(&format!("<p>Currently Serving <a style=\"color: #ff0000\">{}</a> Users and <a style=\"color: #0000ff\">{}</a> Mods.</p>", user_count, mod_count));
+
+    res.push_str("<br>");
+
+    res.push_str(&format!("<p><a href=\"graphiql\">GraphiQL</a></p>"));
+    res.push_str(&format!("<p><a href=\"playground\">Playground</a></p>"));
+
+    res.push_str("<br>");
+
+    res.push_str(&format!("<p>Check us out on <a href=\"{}\">GitHub</a></p>", env!("CARGO_PKG_REPOSITORY")));
+
+    res.push_str("</body></html>");
+    HttpResponse::Ok().body(res)
+}
 
 impl juniper::Context for Database {}
 
@@ -106,6 +128,7 @@ async fn main() -> io::Result<()> {
             .service(users::user_auth)
             .service(mods::create_mod)
             .service(cdn::cdn_get)
+            .service(index)
             // the graphiql UI requires CORS to be enabled
             .wrap(Cors::permissive())
             .wrap(middleware::Logger::default())

@@ -424,6 +424,36 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3b13c32d80ecc7ab747b80c3784bce54ee8a7a0cc4fbda9bf4cda2cf6fe90854"
 
 [[package]]
+name = "api"
+version = "0.1.1"
+dependencies = [
+ "actix-cors",
+ "actix-web",
+ "actix-web-lab",
+ "bitflags 2.3.3",
+ "cached",
+ "chrono",
+ "dotenv",
+ "entity",
+ "env_logger",
+ "forge-lib",
+ "futures",
+ "jsonwebtoken",
+ "juniper",
+ "juniper_actix",
+ "lazy_static",
+ "log",
+ "migration",
+ "minreq",
+ "rand 0.8.5",
+ "sea-orm",
+ "semver",
+ "serde",
+ "serde_json",
+ "uuid 0.8.2",
+]
+
+[[package]]
 name = "arc-swap"
 version = "1.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1473,36 +1503,6 @@ dependencies = [
  "futures-core",
  "js-sys",
  "wasm-bindgen",
-]
-
-[[package]]
-name = "gql-api"
-version = "0.1.0"
-dependencies = [
- "actix-cors",
- "actix-web",
- "actix-web-lab",
- "bitflags 2.3.3",
- "cached",
- "chrono",
- "dotenv",
- "entity",
- "env_logger",
- "forge-lib",
- "futures",
- "jsonwebtoken",
- "juniper",
- "juniper_actix",
- "lazy_static",
- "log",
- "migration",
- "minreq",
- "rand 0.8.5",
- "sea-orm",
- "semver",
- "serde",
- "serde_json",
- "uuid 0.8.2",
 ]
 
 [[package]]
