@@ -16,10 +16,12 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      # cache with sccache
-      - name: Cache
+      # caching
+      - uses: mozilla-actions/sccache-action@v0.0.3
+
+      - name: Rust Cache
         uses:
-          mozilla-actions/sccache-action@v0.0.3
+          Swatinem/rust-cache@v2
 
           # login to ghcr.io
       - uses: docker/login-action@v2
