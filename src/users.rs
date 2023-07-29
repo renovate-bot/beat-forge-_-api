@@ -171,6 +171,7 @@ pub async fn user_auth(
         .unwrap()
         .send()
         .unwrap();
+
     let gat = gat.as_str().unwrap().split('&').collect::<Vec<_>>()[0]
         .split('=')
         .collect::<Vec<_>>()[1]
@@ -181,7 +182,7 @@ pub async fn user_auth(
         .with_header("Authorization", format!("Bearer {}", gat))
         .send()
         .unwrap();
-    dbg!(github_user.as_str().unwrap());
+
     let github_user = serde_json::from_str::<GithubUser>(github_user.as_str().unwrap()).unwrap();
 
     let mby_user = Users::find()
@@ -210,8 +211,6 @@ pub async fn user_auth(
         .await
         .unwrap()
         .unwrap();
-
-    db.close().await.unwrap();
 
     let jwt = JWTAuth::new(user).encode(*KEY.clone());
 
