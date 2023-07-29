@@ -212,6 +212,8 @@ pub async fn user_auth(
         .unwrap()
         .unwrap();
 
+    db.close().await.unwrap();
+
     let jwt = JWTAuth::new(user).encode(*KEY.clone());
 
     HttpResponse::Ok().json(json!({ "jwt": jwt }))

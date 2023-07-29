@@ -6,9 +6,10 @@ use actix_web::{
     web::{self, Data},
     App, HttpResponse, HttpServer, Error, get, Responder,
 };
+use cached::async_sync::OnceCell;
 use migration::MigratorTrait;
 use rand::Rng;
-use sea_orm::{EntityTrait, PaginatorTrait};
+use sea_orm::{EntityTrait, PaginatorTrait, DatabaseConnection};
 
 mod schema;
 mod users;
@@ -34,6 +35,7 @@ async fn graphql_route(
     data: web::Data<Schema>,
     db: web::Data<Database>,
 ) -> Result<HttpResponse, Error> {
+
     juniper_actix::graphql_handler(&data, &db, req, payload).await
 }
 
@@ -41,6 +43,8 @@ async fn graphql_route(
 pub struct Database {
     pool: sea_orm::DatabaseConnection,
 }
+
+impl juniper::Context for Database {}
 
 #[derive(Clone, Copy)]
 pub struct Key([u8; 1024]);
@@ -87,8 +91,6 @@ async fn index(data: web::Data<Database>) -> impl Responder {
     HttpResponse::Ok().body(res)
 }
 
-impl juniper::Context for Database {}
-
 #[actix_web::main]
 async fn main() -> io::Result<()> {
     dotenv::dotenv().ok();
@@ -115,9 +117,11 @@ async fn main() -> io::Result<()> {
     HttpServer::new( move || {
         App::new()
             .app_data(Data::new(create_schema()))
-            .app_data(Data::new(Database {
-                pool: db_conn.clone(),
-            }))
+            .app_data(Data::new(
+                Database {
+                    pool: db_conn.clone(),
+                }
+            ))
             .service(
                 web::resource("/graphql")
                     .route(web::post().to(graphql_route))

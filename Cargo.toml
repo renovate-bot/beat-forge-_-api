@@ -38,3 +38,4 @@ lazy_static = "1.4.0"
 forge-lib = { git = "https://github.com/beat-forge/lib", version = "0.1.0" }
 migration = { path = "./migration" }
 semver = "1.0.18"
+once_cell = "1.18.0"
