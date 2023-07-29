@@ -7,7 +7,7 @@ EXPOSE 8000
 WORKDIR /usr/src/app/
 
 # copy the binary from rust target folder
-COPY target/release/gql-api .
+COPY target/release/api .
 
 # set the entrypoint
-CMD ["./gql-api"]
+CMD ["./api"]
