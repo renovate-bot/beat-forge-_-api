@@ -4,13 +4,14 @@ pub mod prelude;
 
 pub mod beat_saber_versions;
 pub mod categories;
+pub mod mod_beat_saber_versions;
 pub mod mod_stats;
 pub mod mod_versions;
 pub mod mods;
+pub mod user_mods;
 pub mod users;
-pub mod users_mods;
 pub mod version_beat_saber_versions;
+pub mod version_conflicts;
+pub mod version_dependents;
 pub mod version_stats;
 pub mod versions;
-pub mod versions_conflicts;
-pub mod versions_dependents;

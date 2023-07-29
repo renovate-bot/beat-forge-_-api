@@ -2,13 +2,14 @@
 
 pub use super::beat_saber_versions::Entity as BeatSaberVersions;
 pub use super::categories::Entity as Categories;
+pub use super::mod_beat_saber_versions::Entity as ModBeatSaberVersions;
 pub use super::mod_stats::Entity as ModStats;
 pub use super::mod_versions::Entity as ModVersions;
 pub use super::mods::Entity as Mods;
+pub use super::user_mods::Entity as UserMods;
 pub use super::users::Entity as Users;
-pub use super::users_mods::Entity as UsersMods;
 pub use super::version_beat_saber_versions::Entity as VersionBeatSaberVersions;
+pub use super::version_conflicts::Entity as VersionConflicts;
+pub use super::version_dependents::Entity as VersionDependents;
 pub use super::version_stats::Entity as VersionStats;
 pub use super::versions::Entity as Versions;
-pub use super::versions_conflicts::Entity as VersionsConflicts;
-pub use super::versions_dependents::Entity as VersionsDependents;

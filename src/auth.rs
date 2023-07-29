@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use sea_orm::{EntityTrait, QueryFilter, ColumnTrait};
+use sea_orm::{EntityTrait, QueryFilter, ColumnTrait, DatabaseConnection};
 use serde::{Serialize, Deserialize};
 use uuid::Uuid;
 
@@ -11,13 +11,13 @@ bitflags::bitflags! {
         const VIEW_SELF = 1 << 0;
         const EDIT_SELF = 1 << 1;
         // mod permissions
-        const CREATE_MOD = 1 << 3;
-        const EDIT_MOD = 1 << 4;
-        const APPROVE_MOD = 1 << 6;
+        const CREATE_MOD = 1 << 2;
+        const EDIT_MOD = 1 << 3;
+        const APPROVE_MOD = 1 << 4;
         // admin permissions
-        const EDIT_OTHER_USERS = 1 << 7;
-        const EDIT_OTHER_MODS = 1 << 8;
-        const VIEW_OTHER = 1 << 9;
+        const EDIT_OTHER_USERS = 1 << 5;
+        const EDIT_OTHER_MODS = 1 << 6;
+        const VIEW_OTHER = 1 << 7;
     }
 }
 
@@ -90,14 +90,14 @@ impl Authorization {
         }
     }
 
-    pub async fn get_user(&self, db: &Database) -> Option<entity::users::Model> {
+    pub async fn get_user(&self, db: &DatabaseConnection) -> Option<entity::users::Model> {
         match self {
             Self::Session(s) => {
                 let auth = JWTAuth::decode(s.to_string(), *KEY.clone());
                 match auth {
                     Some(auth) => {
                         let user = entity::users::Entity::find_by_id(auth.user.id)
-                            .one(&db.pool)
+                            .one(db)
                             .await
                             .unwrap()
                             .unwrap();
@@ -109,8 +109,8 @@ impl Authorization {
             },
             Self::ApiKey(uuid) => {
                 let user = entity::users::Entity::find()
-                    .filter(entity::users::Column::ApiKey.eq(uuid.to_string()))
-                    .one(&db.pool)
+                    .filter(entity::users::Column::ApiKey.eq(sea_orm::prelude::Uuid::from_bytes(*uuid.as_bytes())))
+                    .one(db)
                     .await
                     .unwrap()
                     .unwrap();
@@ -122,8 +122,46 @@ impl Authorization {
     }
 }
 
-pub async fn validate_permissions(user: &User, required: Permission) -> bool {
-    let user_permissions = Permission::from_bits(user.permissions).unwrap();
+pub trait HasPermissions {
+    fn permissions(&self) -> i32;
+}
 
-    user_permissions.contains(required)
+impl HasPermissions for &User {
+    fn permissions(&self) -> i32 {
+        self.permissions
+    }
+}
+
+impl HasPermissions for &entity::users::Model {
+    fn permissions(&self) -> i32 {
+        self.permissions
+    }
+}
+
+impl HasPermissions for &mut User {
+    fn permissions(&self) -> i32 {
+        self.permissions
+    }
+}
+
+impl HasPermissions for &mut entity::users::Model {
+    fn permissions(&self) -> i32 {
+        self.permissions
+    }
+}
+
+impl HasPermissions for User {
+    fn permissions(&self) -> i32 {
+        self.permissions
+    }
+}
+
+impl HasPermissions for entity::users::Model {
+    fn permissions(&self) -> i32 {
+        self.permissions
+    }
+}
+
+pub async fn validate_permissions<T: HasPermissions>(user: T, required: Permission) -> bool {
+    required.bits() & user.permissions() != 0
 }

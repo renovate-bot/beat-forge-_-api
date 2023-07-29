@@ -9,59 +9,61 @@ pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: Uuid,
     pub mod_id: Uuid,
-    pub approved: Option<bool>,
-    #[sea_orm(column_type = "Text")]
     pub version: String,
+    pub approved: bool,
     #[sea_orm(unique)]
     pub stats: Uuid,
+    #[sea_orm(unique)]
+    pub artifact_hash: String,
+    pub download_url: String,
     pub created_at: DateTime,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
+    #[sea_orm(has_many = "super::mod_versions::Entity")]
+    ModVersions,
     #[sea_orm(
         belongs_to = "super::mods::Entity",
         from = "Column::ModId",
         to = "super::mods::Column::Id",
-        on_update = "NoAction",
-        on_delete = "NoAction"
+        on_update = "Cascade",
+        on_delete = "Cascade"
     )]
     Mods,
+    #[sea_orm(has_many = "super::version_beat_saber_versions::Entity")]
+    VersionBeatSaberVersions,
     #[sea_orm(
         belongs_to = "super::version_stats::Entity",
         from = "Column::Stats",
         to = "super::version_stats::Column::Id",
-        on_update = "NoAction",
-        on_delete = "NoAction"
+        on_update = "Cascade",
+        on_delete = "Cascade"
     )]
     VersionStats,
 }
 
-impl Related<super::version_stats::Entity> for Entity {
+impl Related<super::mod_versions::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::VersionStats.def()
+        Relation::ModVersions.def()
     }
 }
 
 impl Related<super::mods::Entity> for Entity {
     fn to() -> RelationDef {
-        super::mod_versions::Relation::Mods.def()
-    }
-    fn via() -> Option<RelationDef> {
-        Some(super::mod_versions::Relation::Versions.def().rev())
+        Relation::Mods.def()
     }
 }
 
-impl Related<super::beat_saber_versions::Entity> for Entity {
+impl Related<super::version_beat_saber_versions::Entity> for Entity {
     fn to() -> RelationDef {
-        super::version_beat_saber_versions::Relation::BeatSaberVersions.def()
+        Relation::VersionBeatSaberVersions.def()
     }
-    fn via() -> Option<RelationDef> {
-        Some(
-            super::version_beat_saber_versions::Relation::Versions
-                .def()
-                .rev(),
-        )
+}
+
+impl Related<super::version_stats::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::VersionStats.def()
     }
 }
 

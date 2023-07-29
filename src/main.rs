@@ -4,45 +4,47 @@ use actix_cors::Cors;
 use actix_web::{
     middleware,
     web::{self, Data},
-    App, HttpResponse, HttpServer, Error,
+    App, HttpResponse, HttpServer, Error, get, Responder,
 };
+use cached::async_sync::OnceCell;
 use migration::MigratorTrait;
 use rand::Rng;
+use sea_orm::{EntityTrait, PaginatorTrait, DatabaseConnection};
 
 mod schema;
 mod users;
 mod mods;
 mod versions;
 mod auth;
+mod cdn;
 
 use crate::schema::{create_schema, Schema};
 
 /// GraphiQL playground UI
 async fn graphiql_route() -> Result<HttpResponse, Error> {
-    juniper_actix::graphiql_handler("/graphgl", None).await
+    juniper_actix::graphiql_handler("/graphql", None).await
 }
 
 async fn playground_route() -> Result<HttpResponse, Error> {
-    juniper_actix::playground_handler("/graphgl", None).await
+    juniper_actix::playground_handler("/graphql", None).await
 }
 
 async fn graphql_route(
     req: actix_web::HttpRequest,
     payload: actix_web::web::Payload,
     data: web::Data<Schema>,
+    db: web::Data<Database>,
 ) -> Result<HttpResponse, Error> {
-    let database = Database {
-        pool: sea_orm::Database::connect(&std::env::var("DATABASE_URL").unwrap())
-            .await
-            .unwrap(),
-    };
-    juniper_actix::graphql_handler(&data, &database, req, payload).await
+
+    juniper_actix::graphql_handler(&data, &db, req, payload).await
 }
 
 #[derive(Clone)]
 pub struct Database {
     pool: sea_orm::DatabaseConnection,
 }
+
+impl juniper::Context for Database {}
 
 #[derive(Clone, Copy)]
 pub struct Key([u8; 1024]);
@@ -62,13 +64,31 @@ lazy_static::lazy_static! {
     };
 }
 
-// #[derive(Clone)]
-// pub struct AppState {
-//     db: Database,
-//     schema: Arc<Schema>,
-// }
+#[get("/")]
+async fn index(data: web::Data<Database>) -> impl Responder {
+    let user_count = entity::users::Entity::find().count(&data.pool).await.unwrap();
+    let mod_count = entity::mods::Entity::find().count(&data.pool).await.unwrap();
 
-impl juniper::Context for Database {}
+    let mut res = String::new();
+    res.push_str("<!DOCTYPE html><html><body style=\"background-color: #18181b; color: #ffffff\">");
+    res.push_str(&format!("<p>Currently running forge-api version {}.<p>", env!("CARGO_PKG_VERSION")));
+
+    res.push_str("<br>");
+
+    res.push_str(&format!("<p>Currently Serving <a style=\"color: #ff0000\">{}</a> Users and <a style=\"color: #0000ff\">{}</a> Mods.</p>", user_count, mod_count));
+
+    res.push_str("<br>");
+
+    res.push_str(&format!("<p><a href=\"graphiql\">GraphiQL</a></p>"));
+    res.push_str(&format!("<p><a href=\"playground\">Playground</a></p>"));
+
+    res.push_str("<br>");
+
+    res.push_str(&format!("<p>Check us out on <a href=\"{}\">GitHub</a></p>", env!("CARGO_PKG_REPOSITORY")));
+
+    res.push_str("</body></html>");
+    HttpResponse::Ok().body(res)
+}
 
 #[actix_web::main]
 async fn main() -> io::Result<()> {
@@ -79,9 +99,16 @@ async fn main() -> io::Result<()> {
     log::info!("GraphiQL playground: http://localhost:8080/graphiql");
     log::info!("Playground: http://localhost:8080/playground");
 
-    let db_conn = sea_orm::Database::connect(&std::env::var("DATABASE_URL").unwrap())
-        .await
-        .unwrap();
+    let mut db_conf = sea_orm::ConnectOptions::new(std::env::var("DATABASE_URL").unwrap());
+
+    db_conf.max_connections(20);
+    db_conf.min_connections(5);
+    db_conf.sqlx_logging(true);
+    db_conf.sqlx_logging_level(log::LevelFilter::Debug);
+
+    let db_conn = sea_orm::Database::connect(db_conf).await.unwrap();
+
+    let _ = std::fs::create_dir(Path::new("./data/cdn"));
 
     //migrate
     migration::Migrator::up(&db_conn, None).await.unwrap();
@@ -90,17 +117,22 @@ async fn main() -> io::Result<()> {
     HttpServer::new( move || {
         App::new()
             .app_data(Data::new(create_schema()))
-            .app_data(Data::new(Database {
-                pool: db_conn.clone(),
-            }))
+            .app_data(Data::new(
+                Database {
+                    pool: db_conn.clone(),
+                }
+            ))
             .service(
-                web::resource("/graphgl")
+                web::resource("/graphql")
                     .route(web::post().to(graphql_route))
                     .route(web::get().to(graphql_route)),
             )
             .service(web::resource("/playground").route(web::get().to(playground_route)))
             .service(web::resource("/graphiql").route(web::get().to(graphiql_route)))
             .service(users::user_auth)
+            .service(mods::create_mod)
+            .service(cdn::cdn_get)
+            .service(index)
             // the graphiql UI requires CORS to be enabled
             .wrap(Cors::permissive())
             .wrap(middleware::Logger::default())

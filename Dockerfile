@@ -1,4 +1,4 @@
-FROM debian:buster-slim
+FROM debian:bullseye-slim
 
 LABEL org.opencontainers.image.source=https://github.com/beat-forge/api
 EXPOSE 8000
@@ -7,7 +7,7 @@ EXPOSE 8000
 WORKDIR /usr/src/app/
 
 # copy the binary from rust target folder
-COPY target/release/gql-api .
+COPY target/release/api .
 
 # set the entrypoint
-CMD ["./gql-api"]
+CMD ["./api"]

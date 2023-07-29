@@ -67,21 +67,10 @@ enum ModBeatSaberVersions {
 enum Mods {
     Table,
     Id,
-    Slug,
-    Name,
-    Description,
-    Icon,
-    Cover,
-    Author,
-    Category,
-    Stats,
-    CreatedAt,
-    UpdatedAt,
 }
 
 #[derive(Iden)]
 enum BeatSaberVersions {
     Table,
     Id,
-    Ver,
 }

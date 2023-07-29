@@ -4,10 +4,10 @@ use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Serialize, Deserialize)]
-#[sea_orm(table_name = "version_beat_saber_versions")]
+#[sea_orm(table_name = "mod_beat_saber_versions")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
-    pub version_id: Uuid,
+    pub mod_id: Uuid,
     #[sea_orm(primary_key, auto_increment = false)]
     pub beat_saber_version_id: Uuid,
 }
@@ -23,13 +23,13 @@ pub enum Relation {
     )]
     BeatSaberVersions,
     #[sea_orm(
-        belongs_to = "super::versions::Entity",
-        from = "Column::VersionId",
-        to = "super::versions::Column::Id",
+        belongs_to = "super::mods::Entity",
+        from = "Column::ModId",
+        to = "super::mods::Column::Id",
         on_update = "Cascade",
         on_delete = "Cascade"
     )]
-    Versions,
+    Mods,
 }
 
 impl Related<super::beat_saber_versions::Entity> for Entity {
@@ -38,9 +38,9 @@ impl Related<super::beat_saber_versions::Entity> for Entity {
     }
 }
 
-impl Related<super::versions::Entity> for Entity {
+impl Related<super::mods::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::Versions.def()
+        Relation::Mods.def()
     }
 }
 

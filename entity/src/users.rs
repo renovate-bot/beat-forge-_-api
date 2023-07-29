@@ -10,37 +10,38 @@ pub struct Model {
     pub id: Uuid,
     #[sea_orm(unique)]
     pub github_id: i32,
-    #[sea_orm(column_type = "Text", unique)]
+    #[sea_orm(unique)]
     pub username: String,
-    pub permissions: i32,
-    #[sea_orm(column_type = "Text", nullable)]
     pub display_name: Option<String>,
-    #[sea_orm(column_type = "Text", nullable)]
+    #[sea_orm(unique)]
+    pub email: String,
     pub bio: Option<String>,
-    #[sea_orm(column_type = "Text", nullable)]
     pub avatar: Option<String>,
-    #[sea_orm(column_type = "Text", nullable)]
     pub banner: Option<String>,
-    pub created_at: DateTime,
-    pub updated_at: DateTime,
+    pub permissions: i32,
     #[sea_orm(unique)]
     pub api_key: Uuid,
-    #[sea_orm(column_type = "Text", unique)]
-    pub email: String,
+    pub created_at: DateTime,
+    pub updated_at: DateTime,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
     #[sea_orm(has_many = "super::mods::Entity")]
     Mods,
+    #[sea_orm(has_many = "super::user_mods::Entity")]
+    UserMods,
 }
 
 impl Related<super::mods::Entity> for Entity {
     fn to() -> RelationDef {
-        super::users_mods::Relation::Mods.def()
+        Relation::Mods.def()
     }
-    fn via() -> Option<RelationDef> {
-        Some(super::users_mods::Relation::Users.def().rev())
+}
+
+impl Related<super::user_mods::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::UserMods.def()
     }
 }
 

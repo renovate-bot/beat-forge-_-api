@@ -18,16 +18,16 @@ pub enum Relation {
         belongs_to = "super::mods::Entity",
         from = "Column::ModId",
         to = "super::mods::Column::Id",
-        on_update = "NoAction",
-        on_delete = "NoAction"
+        on_update = "Cascade",
+        on_delete = "Cascade"
     )]
     Mods,
     #[sea_orm(
         belongs_to = "super::versions::Entity",
         from = "Column::VersionId",
         to = "super::versions::Column::Id",
-        on_update = "NoAction",
-        on_delete = "NoAction"
+        on_update = "Cascade",
+        on_delete = "Cascade"
     )]
     Versions,
 }

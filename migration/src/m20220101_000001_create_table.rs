@@ -184,6 +184,7 @@ impl MigrationTrait for Migration {
                     .col(ColumnDef::new(Mods::Author).uuid().not_null())
                     .col(ColumnDef::new(Mods::Category).uuid().not_null())
                     .col(ColumnDef::new(Mods::Stats).uuid().not_null().unique_key())
+                    .col(ColumnDef::new(Mods::Website).string().null())
                     .col(
                         ColumnDef::new(Mods::CreatedAt)
                             .date_time()
@@ -250,6 +251,7 @@ impl MigrationTrait for Migration {
                             .not_null()
                             .unique_key(),
                     )
+                    .col(ColumnDef::new(Versions::ArtifactHash).string().not_null())
                     .col(ColumnDef::new(Versions::DownloadUrl).string().not_null())
                     .col(
                         ColumnDef::new(Versions::CreatedAt)
@@ -548,6 +550,7 @@ enum Mods {
     Icon,
     Cover,
     Author,
+    Website,
     Category,
     Stats,
     CreatedAt,
@@ -561,6 +564,7 @@ enum Versions {
     ModId,
     Version,
     Approved,
+    ArtifactHash,
     DownloadUrl,
     Stats,
     CreatedAt,
