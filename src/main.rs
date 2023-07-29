@@ -66,9 +66,8 @@ lazy_static::lazy_static! {
 
 #[get("/")]
 async fn index(data: web::Data<Database>) -> impl Responder {
-    let db = data.pool.clone();
-    let user_count = entity::users::Entity::find().count(&db).await.unwrap();
-    let mod_count = entity::mods::Entity::find().count(&db).await.unwrap();
+    let user_count = entity::users::Entity::find().count(&data.pool).await.unwrap();
+    let mod_count = entity::mods::Entity::find().count(&data.pool).await.unwrap();
 
     let mut res = String::new();
     res.push_str("<!DOCTYPE html><html><body style=\"background-color: #18181b; color: #ffffff\">");
@@ -103,6 +102,7 @@ async fn main() -> io::Result<()> {
     let mut db_conf = sea_orm::ConnectOptions::new(std::env::var("DATABASE_URL").unwrap());
 
     db_conf.max_connections(20);
+    db_conf.min_connections(5);
     db_conf.sqlx_logging(true);
     db_conf.sqlx_logging_level(log::LevelFilter::Debug);
 

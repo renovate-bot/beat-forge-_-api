@@ -183,8 +183,6 @@ pub async fn create_mod(
     mut payload: web::Payload,
     req: HttpRequest,
 ) -> impl Responder {
-    let db = db.pool.clone();
-
     let auth = req
         .headers()
         .get("Authorization")
@@ -194,7 +192,7 @@ pub async fn create_mod(
     let auser_id;
     if auth.starts_with("Bearer") {
         let auth = Authorization::parse(Some(auth.split(" ").collect::<Vec<_>>()[1].to_string()));
-        let user = auth.get_user(&db).await.unwrap();
+        let user = auth.get_user(&db.pool).await.unwrap();
         if !validate_permissions(&user, Permission::CREATE_MOD).await {
             return HttpResponse::Unauthorized().body("Unauthorized");
         }
@@ -214,7 +212,7 @@ pub async fn create_mod(
 
     let db_cata = Categories::find()
         .filter(entity::categories::Column::Name.eq(forgemod.manifest.category.clone().to_string()))
-        .one(&db)
+        .one(&db.pool)
         .await
         .unwrap();
 
@@ -224,7 +222,7 @@ pub async fn create_mod(
     } else {
         Categories::find()
             .filter(entity::categories::Column::Name.eq("other"))
-            .one(&db)
+            .one(&db.pool)
             .await
             .unwrap()
             .unwrap()
@@ -232,7 +230,7 @@ pub async fn create_mod(
 
     let v_req = forgemod.manifest.game_version.clone();
     let vers = BeatSaberVersions::find()
-        .all(&db)
+        .all(&db.pool)
         .await
         .unwrap()
         .into_iter()
@@ -246,13 +244,13 @@ pub async fn create_mod(
     // see if mod exists; if it does add a new version; if it doesn't create a new mod
     let mby_mod = Mods::find()
         .filter(entity::mods::Column::Slug.eq(forgemod.manifest._id.clone()))
-        .one(&db)
+        .one(&db.pool)
         .await
         .unwrap();
 
     let v_id;
 
-    let trans = db.begin().await.unwrap();
+    let trans = db.pool.begin().await.unwrap();
 
     if let Some(db_mod) = mby_mod {
         let db_mod = db_mod.id;

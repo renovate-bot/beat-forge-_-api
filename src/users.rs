@@ -157,8 +157,6 @@ pub async fn user_auth(
     data: web::Data<Database>,
     info: web::Query<UserAuthReq>,
 ) -> impl Responder {
-    let db = data.pool.clone();
-
     let code = &info.code;
 
     let gat = minreq::post("https://github.com/login/oauth/access_token")
@@ -187,7 +185,7 @@ pub async fn user_auth(
 
     let mby_user = Users::find()
         .filter(entity::users::Column::GithubId.eq(github_user.id as i32))
-        .one(&db)
+        .one(&data.pool)
         .await
         .unwrap();
 
@@ -202,17 +200,15 @@ pub async fn user_auth(
             ..Default::default()
         };
 
-        Users::insert(usr).exec(&db).await.unwrap();
+        Users::insert(usr).exec(&data.pool).await.unwrap();
     }
 
     let user = Users::find()
         .filter(entity::users::Column::GithubId.eq(github_user.id as i32))
-        .one(&db)
+        .one(&data.pool)
         .await
         .unwrap()
         .unwrap();
-
-    db.close().await.unwrap();
 
     let jwt = JWTAuth::new(user).encode(*KEY.clone());
 
