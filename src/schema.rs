@@ -26,9 +26,7 @@ impl QueryRoot {
     #[cached::cached(time=120)]
     async fn user_by_id(db: &Database, id: Uuid, auth: Option<String>) -> FieldResult<User> {
         let db = db.pool.clone();
-        let r = users::find_by_id(&db, id, Authorization::parse(auth)).await;
-        db.close().await.unwrap();
-        r
+        users::find_by_id(&db, id, Authorization::parse(auth)).await
     }
 
     #[cached::cached(time=120)]
@@ -45,15 +43,13 @@ impl QueryRoot {
             ));
         }
         let db = db.pool.clone();
-        let r = users::find_all(
+        users::find_all(
             &db,
             limit.unwrap_or(10),
             offset.unwrap_or(0),
             Authorization::parse(auth),
         )
-        .await;
-        db.close().await.unwrap();
-        r
+        .await
     }
 
     #[cached::cached(time=120)]
@@ -71,34 +67,28 @@ impl QueryRoot {
         }
         let db = db.pool.clone();
 
-        let r = mods::find_all(&db, limit.unwrap_or(10), offset.unwrap_or(0), version).await;
-        db.close().await.unwrap();
-        r
+        mods::find_all(&db, limit.unwrap_or(10), offset.unwrap_or(0), version).await
     }
 
     #[cached::cached(time=120)]
     async fn mod_by_id(db: &Database, id: Uuid) -> FieldResult<Mod> {
         let db = db.pool.clone();
 
-        let r = mods::find_by_id(&db, id).await;
-        db.close().await.unwrap();
-        r
+        mods::find_by_id(&db, id).await
     }
 
     #[cached::cached(time=120)]
     async fn mod_by_author(db: &Database, id: Uuid) -> FieldResult<Vec<Mod>> {
         let db = db.pool.clone();
 
-        let r = mods::find_by_author(&db, id).await;
-        db.close().await.unwrap();
-        r
+        mods::find_by_author(&db, id).await
     }
 
     #[cached::cached(time=120)]
     async fn categories(db: &Database) -> FieldResult<Vec<GCategory>> {
         let db = db.pool.clone();
 
-        let r = Ok(Categories::find()
+        Ok(Categories::find()
             .all(&db)
             .await
             .unwrap()
@@ -107,24 +97,20 @@ impl QueryRoot {
                 name: c.name.clone(),
                 description: c.description.clone(),
             })
-            .collect::<Vec<_>>());
-        db.close().await.unwrap();
-        r
+            .collect::<Vec<_>>())
     }
 
     #[cached::cached(time=120)]
     async fn beat_saber_versions(db: &Database) -> FieldResult<Vec<String>> {
         let db = db.pool.clone();
 
-        let r = Ok(BeatSaberVersions::find()
+        Ok(BeatSaberVersions::find()
             .all(&db)
             .await
             .unwrap()
             .iter()
             .map(|v| v.ver.clone())
-            .collect::<Vec<_>>());
-        db.close().await.unwrap();
-        r
+            .collect::<Vec<_>>())
     }
 }
 

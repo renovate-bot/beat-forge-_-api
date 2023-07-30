@@ -35,7 +35,6 @@ async fn graphql_route(
     data: web::Data<Schema>,
     db: web::Data<Database>,
 ) -> Result<HttpResponse, Error> {
-
     juniper_actix::graphql_handler(&data, &db, req, payload).await
 }
 
