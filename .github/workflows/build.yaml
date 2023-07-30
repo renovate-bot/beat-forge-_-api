@@ -16,14 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      # caching
-      - uses: mozilla-actions/sccache-action@v0.0.3
-
-      - name: Rust Cache
-        uses:
-          Swatinem/rust-cache@v2
-
-          # login to ghcr.io
+      # login to ghcr.io
       - uses: docker/login-action@v2
         with:
           registry: ghcr.io
@@ -35,6 +28,12 @@ jobs:
         with:
           toolchain: stable
           override: true
+
+      # caching
+      - uses: mozilla-actions/sccache-action@v0.0.3
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
 
       # test and build
       - uses: actions-rs/cargo@v1
