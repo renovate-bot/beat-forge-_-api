@@ -5,7 +5,7 @@ use chrono::{DateTime, Utc};
 
 use forge_lib::structs::forgemod::ForgeMod;
 use futures::StreamExt;
-use juniper::{FieldError, FieldResult, GraphQLObject};
+use juniper::{FieldError, FieldResult, GraphQLObject, graphql_value};
 use migration::OnConflict;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QuerySelect, Set,
@@ -157,9 +157,28 @@ pub async fn find_all(
 
 pub async fn find_by_id(db: &DatabaseConnection, id: Uuid) -> FieldResult<Mod> {
     let id = sea_orm::prelude::Uuid::from_bytes(*id.as_bytes());
-    let m = Mods::find_by_id(id).one(db).await?.unwrap();
+    let m = Mods::find_by_id(id).one(db).await?;
 
-    Mod::from_db_mod(db, m).await
+    if let Some(m) = m {
+        Mod::from_db_mod(db, m).await
+    }
+    else {
+        Err(FieldError::new("Mod not found", graphql_value!({ "internal_error": "Mod not found" })))
+    }
+}
+
+pub async fn find_by_slug(db: &DatabaseConnection, slug: String) -> FieldResult<Mod> {
+    let m = Mods::find()
+        .filter(entity::mods::Column::Slug.eq(slug))
+        .one(db)
+        .await?;
+
+    if let Some(m) = m {
+        Mod::from_db_mod(db, m).await
+    }
+    else {
+        Err(FieldError::new("Mod not found", graphql_value!({ "internal_error": "Mod not found" })))
+    }
 }
 
 pub async fn find_by_author(db: &DatabaseConnection, author: Uuid) -> FieldResult<Vec<Mod>> {

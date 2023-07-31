@@ -78,6 +78,13 @@ impl QueryRoot {
     }
 
     #[cached::cached(time=120)]
+    async fn mod_by_slug(db: &Database, slug: String) -> FieldResult<Mod> {
+        let db = db.pool.clone();
+
+        mods::find_by_slug(&db, slug).await
+    }
+
+    #[cached::cached(time=120)]
     async fn mod_by_author(db: &Database, id: Uuid) -> FieldResult<Vec<Mod>> {
         let db = db.pool.clone();
 
