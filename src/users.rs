@@ -195,8 +195,8 @@ pub async fn user_auth(
             github_id: Set(github_user.id as i32),
             username: Set(github_user.login),
             email: Set(github_user.email),
-            bio: Set(Some(github_user.bio)),
-            avatar: Set(Some(github_user.avatar_url)),
+            bio: Set(github_user.bio),
+            avatar: Set(github_user.avatar_url),
             permissions: Set(7),
             ..Default::default()
         };
@@ -218,14 +218,9 @@ pub async fn user_auth(
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct GithubUser {
-    pub avatar_url: String,
-    pub bio: String,
-    pub blog: String,
+    pub avatar_url: Option<String>,
+    pub bio: Option<String>,
     pub email: String,
     pub id: i64,
     pub login: String,
-    pub name: Option<String>,
-    pub twitter_username: String,
-    pub updated_at: DateTime<Utc>,
-    pub url: String,
 }
