@@ -181,6 +181,7 @@ pub async fn user_auth(
         .send()
         .unwrap();
 
+    log::debug!("{}", github_user.as_str().unwrap());
     let github_user = serde_json::from_str::<GithubUser>(github_user.as_str().unwrap()).unwrap();
 
     let mby_user = Users::find()
