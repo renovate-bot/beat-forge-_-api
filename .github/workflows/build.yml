@@ -51,6 +51,8 @@ jobs:
         with:
           tags: ghcr.io/${{ github.repository }}:latest
           push: true
+          file: ./Dockerfile
+          context: .
 
       - name: Deploy to Staging
         uses: appleboy/ssh-action@v1.0.0
