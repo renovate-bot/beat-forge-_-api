@@ -11,7 +11,7 @@ use sea_orm::{
     ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QuerySelect, Set,
     TransactionTrait,
 };
-use semver::Version;
+use semver::{Version, VersionReq};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -133,12 +133,6 @@ pub async fn find_all(
             .map(|v| v.1.clone().unwrap())
             .collect::<Vec<_>>();
 
-        // Ok(futures::future::join_all(
-        //     mods.into_iter()
-        //         .map(|m| async move { Mod::from_db_mod(db2, m).await.unwrap() })
-        //         .collect::<Vec<_>>(),
-        // )
-        // .await)
         let mut r = vec![];
         for m in mods {
             r.push(Mod::from_db_mod(db, m).await.unwrap());
