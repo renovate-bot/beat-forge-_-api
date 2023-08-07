@@ -580,6 +580,9 @@ pub async fn create_mod(
             .collect(),
         supported_versions,
     };
+    client.index(format!("{}_mods", std::env::var("MEILI_PREFIX").unwrap_or("".to_string()))).set_filterable_attributes(["category"]).await.unwrap();
+    client.index(format!("{}_mods", std::env::var("MEILI_PREFIX").unwrap_or("".to_string()))).set_searchable_attributes(["name", "description"]).await.unwrap();
+    client.index(format!("{}_mods", std::env::var("MEILI_PREFIX").unwrap_or("".to_string()))).set_sortable_attributes(["stats.downloads"]).await.unwrap();
 
     client.index(format!("{}mods", std::env::var("MEILI_PREFIX").unwrap_or("".to_string()))).add_or_replace(&[meilimod], None).await.unwrap();
 

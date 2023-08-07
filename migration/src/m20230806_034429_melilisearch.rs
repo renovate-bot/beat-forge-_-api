@@ -75,6 +75,10 @@ impl MigrationTrait for Migration {
         }
 
         let client = meilisearch_sdk::client::Client::new(std::env::var("MEILI_URL").unwrap(), Some(std::env::var("MEILI_KEY").unwrap()));
+        client.index(format!("{}_mods", std::env::var("MEILI_PREFIX").unwrap_or("".to_string()))).set_filterable_attributes(["category"]).await.unwrap();
+        client.index(format!("{}_mods", std::env::var("MEILI_PREFIX").unwrap_or("".to_string()))).set_searchable_attributes(["name", "description"]).await.unwrap();
+        client.index(format!("{}_mods", std::env::var("MEILI_PREFIX").unwrap_or("".to_string()))).set_sortable_attributes(["stats.downloads"]).await.unwrap();
+        
         client.index(format!("{}_mods", std::env::var("MEILI_PREFIX").unwrap_or("".to_string()))).add_documents(&meili_mods, None).await.unwrap();
         Ok(())
     }
