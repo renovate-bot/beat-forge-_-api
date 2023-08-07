@@ -1,0 +1,12 @@
+[package]
+name = "meilisearch-entity"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+entity = { path = "../entity" }
+sea-orm = "0.12.2"
+semver = { version = "1.0.18", features = ["serde"] }
+serde = { version = "1.0.181", features = ["derive"] }

@@ -5,7 +5,7 @@ use chrono::{DateTime, Utc};
 
 use forge_lib::structs::forgemod::ForgeMod;
 use futures::StreamExt;
-use juniper::{FieldError, FieldResult, GraphQLObject, graphql_value};
+use juniper::{graphql_value, FieldError, FieldResult, GraphQLObject};
 use migration::OnConflict;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QuerySelect, Set,
@@ -16,6 +16,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use entity::prelude::*;
+use meilisearch_entity::prelude::*;
 
 use crate::{
     auth::{validate_permissions, Authorization, Permission},
@@ -155,9 +156,11 @@ pub async fn find_by_id(db: &DatabaseConnection, id: Uuid) -> FieldResult<Mod> {
 
     if let Some(m) = m {
         Mod::from_db_mod(db, m).await
-    }
-    else {
-        Err(FieldError::new("Mod not found", graphql_value!({ "internal_error": "Mod not found" })))
+    } else {
+        Err(FieldError::new(
+            "Mod not found",
+            graphql_value!({ "internal_error": "Mod not found" }),
+        ))
     }
 }
 
@@ -169,9 +172,11 @@ pub async fn find_by_slug(db: &DatabaseConnection, slug: String) -> FieldResult<
 
     if let Some(m) = m {
         Mod::from_db_mod(db, m).await
-    }
-    else {
-        Err(FieldError::new("Mod not found", graphql_value!({ "internal_error": "Mod not found" })))
+    } else {
+        Err(FieldError::new(
+            "Mod not found",
+            graphql_value!({ "internal_error": "Mod not found" }),
+        ))
     }
 }
 
@@ -202,14 +207,14 @@ pub async fn create_mod(
         .unwrap()
         .to_str()
         .unwrap();
-    let auser_id;
+    let auser;
     if auth.starts_with("Bearer") {
         let auth = Authorization::parse(Some(auth.split(" ").collect::<Vec<_>>()[1].to_string()));
         let user = auth.get_user(&db.pool).await.unwrap();
         if !validate_permissions(&user, Permission::CREATE_MOD).await {
             return HttpResponse::Unauthorized().body("Unauthorized");
         }
-        auser_id = user.id;
+        auser = user;
     } else {
         return HttpResponse::Unauthorized().body("Unauthorized");
     }
@@ -386,7 +391,7 @@ pub async fn create_mod(
         let db_mod = entity::mods::ActiveModel {
             slug: Set(forgemod.manifest._id.clone()),
             name: Set(forgemod.manifest.name.clone()),
-            author: Set(auser_id),
+            author: Set(auser.id),
             description: Set(Some(forgemod.manifest.description.clone())),
             website: Set(Some(forgemod.manifest.website.clone())),
             category: Set(db_cata.id),
@@ -399,7 +404,7 @@ pub async fn create_mod(
         .id;
 
         entity::user_mods::ActiveModel {
-            user_id: Set(auser_id),
+            user_id: Set(auser.id),
             mod_id: Set(db_mod),
         }
         .insert(&trans)
@@ -514,17 +519,69 @@ pub async fn create_mod(
         v_id = version;
     }
 
-    let db_id = Mods::find()
+    let db_mod = Mods::find()
         .filter(entity::mods::Column::Slug.eq(forgemod.manifest._id.clone()))
         .one(&trans)
         .await
         .unwrap()
-        .unwrap()
-        .id;
+        .unwrap();
 
-    let _ = std::fs::create_dir(format!("./data/cdn/{}", db_id));
-    std::fs::write(format!("./data/cdn/{}/{}.forgemod", db_id, v_id), buf).unwrap();
+    let _ = std::fs::create_dir(format!("./data/cdn/{}", &db_mod.id));
+    std::fs::write(format!("./data/cdn/{}/{}.forgemod", &db_mod.id, v_id), buf).unwrap();
 
     trans.commit().await.unwrap();
+
+    // add to meilisearch
+    let client = meilisearch_sdk::client::Client::new(
+        std::env::var("MEILI_URL").unwrap(),
+        Some(std::env::var("MEILI_KEY").unwrap()),
+    );
+
+    let mod_vers = ModVersions::find()
+        .filter(entity::mod_versions::Column::ModId.eq(db_mod.id))
+        .find_also_related(Versions)
+        .all(&db.pool)
+        .await
+        .unwrap()
+        .into_iter()
+        .map(|(_, v)| Version::parse(&v.unwrap().version).unwrap())
+        .collect::<Vec<_>>();
+
+    let supported_versions = ModBeatSaberVersions::find().filter(entity::mod_beat_saber_versions::Column::ModId.eq(db_mod.id))
+        .find_also_related(BeatSaberVersions)
+        .all(&db.pool)
+        .await
+        .unwrap()
+        .into_iter()
+        .map(|(_, v)| Version::parse(&v.unwrap().ver).unwrap())
+        .collect::<Vec<_>>();
+
+    let mod_stats = ModStats::find_by_id(db_mod.stats)
+        .one(&db.pool)
+        .await
+        .unwrap()
+        .unwrap();
+
+    let meilimod = MeiliMod {
+        id: db_mod.id,
+        name: db_mod.name,
+        description: db_mod.description.unwrap_or("".to_string()),
+        category: db_cata.name,
+        author: MeiliUser {
+            username: auser.username.clone(),
+            display_name: auser.display_name.unwrap_or(auser.username),
+        },
+        stats: MeiliModStats {
+            downloads: mod_stats.downloads as u64,
+        },
+        versions: mod_vers
+            .into_iter()
+            .map(|v| MeiliVersion { version: v })
+            .collect(),
+        supported_versions,
+    };
+
+    client.index(format!("{}mods", std::env::var("MEILI_PREFIX").unwrap_or("".to_string()))).add_or_replace(&[meilimod], None).await.unwrap();
+
     HttpResponse::Created().finish()
 }

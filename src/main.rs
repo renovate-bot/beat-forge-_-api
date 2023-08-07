@@ -17,6 +17,7 @@ mod mods;
 mod versions;
 mod auth;
 mod cdn;
+mod search;
 
 use crate::schema::{create_schema, Schema};
 

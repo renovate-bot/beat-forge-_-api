@@ -1,7 +1,7 @@
 [workspace]
 members = [
     ".",
-    "entity",
+    "*entity",
     "migration"
 ]
 
@@ -39,3 +39,5 @@ forge-lib = { git = "https://github.com/beat-forge/lib", version = "0.1.0" }
 migration = { path = "./migration" }
 semver = "1.0.18"
 once_cell = "1.18.0"
+meilisearch-sdk = "0.24.1"
+meilisearch-entity = { path = "./meilisearch-entity" }
