@@ -7,7 +7,7 @@ members = [
 
 [package]
 name = "api"
-version = "0.1.3"
+version = "0.1.0"
 edition = "2021"
 repository = "https://github.com/beat-forge/api"
 
@@ -27,7 +27,7 @@ entity = { path = "./entity" }
 dotenv = "0.15.0"
 juniper_actix = "0.4.0"
 futures = "0.3.28"
-serde = { version = "1.0.180", features = ["derive"] }
+serde = { version = "1.0.181", features = ["derive"] }
 bitflags = "2.3.3"
 cached = "0.44.0"
 jsonwebtoken = "8.3.0"

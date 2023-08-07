@@ -1,16 +1,14 @@
 on:
-  push:
-    branches:
-      - main
+  release:
+    types: [released]
 
-name: Build
+name: Deploy to Production
 permissions:
   contents: read
   packages: write
 
 jobs:
   build:
-    name: build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -54,7 +52,7 @@ jobs:
           file: ./Dockerfile
           context: .
 
-      - name: Deploy to Staging
+      - name: Deploy to Production
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.HOST }}
@@ -62,4 +60,4 @@ jobs:
           password: ${{ secrets.PASSWORD }}
           port: ${{ secrets.PORT }}
           script: |
-            docker run -v /var/run/docker.sock:/var/run/docker.sock containrrr/watchtower --run-once --rm
+            docker run -v /var/run/docker.sock:/var/run/docker.sock containrrr/watchtower --run-once
