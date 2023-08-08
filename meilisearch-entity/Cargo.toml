@@ -9,4 +9,4 @@ edition = "2021"
 entity = { path = "../entity" }
 sea-orm = "0.12.2"
 semver = { version = "1.0.18", features = ["serde"] }
-serde = { version = "1.0.181", features = ["derive"] }
+serde = { version = "1.0.183", features = ["derive"] }
