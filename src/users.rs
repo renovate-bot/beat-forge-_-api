@@ -249,7 +249,7 @@ pub async fn user_auth(
 pub struct GithubUser {
     pub avatar_url: Option<String>,
     pub bio: Option<String>,
-    pub email: String,
+    pub email: Option<String>,
     pub id: i64,
     pub login: String,
 }
