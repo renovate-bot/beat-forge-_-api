@@ -186,17 +186,21 @@ pub async fn user_auth(
 
     let github_user = minreq::get("https://api.github.com/user")
         .with_header("User-Agent", "forge-registry")
+        .with_header("Accept", "application/vnd.github+json")
         .with_header("Authorization", format!("Bearer {}", gat))
         .send()
         .unwrap();
 
     let github_emails = minreq::get("https://api.github.com/user/emails")
         .with_header("User-Agent", "forge-registry")
+        .with_header("Accept", "application/vnd.github+json")
         .with_header("Authorization", format!("Bearer {}", gat))
         .send()
         .unwrap()
         .json::<Vec<GithubEmail>>()
         .unwrap();
+
+    log::debug!("{:?}", github_emails);
 
     let primary_email = github_emails
         .iter()
@@ -206,6 +210,7 @@ pub async fn user_auth(
         .clone();
 
     log::debug!("{}", github_user.as_str().unwrap());
+    log::debug!("{}", primary_email);
     let github_user = serde_json::from_str::<GithubUser>(github_user.as_str().unwrap()).unwrap();
 
     let mby_user = Users::find()
