@@ -18,7 +18,7 @@ impl MigrationTrait for Migration {
                 .unwrap();
             v.download_url = format!(
                 "{}/cdn/{}@{}",
-                std::env::var("DOWNLOAD_URL").unwrap(),
+                std::env::var("PUBLIC_URL").unwrap(),
                 parent.slug,
                 v.version
             );
