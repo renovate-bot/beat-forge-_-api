@@ -1,4 +1,4 @@
-use actix_web::{post, web, HttpRequest, HttpResponse, Responder};
+use actix_web::{post, web, HttpRequest, HttpResponse, Responder, get};
 use chrono::{DateTime, Utc};
 use entity::prelude::*;
 use juniper::{
@@ -223,4 +223,30 @@ pub struct GithubUser {
     pub email: String,
     pub id: i64,
     pub login: String,
+}
+
+#[get("/me")]
+pub async fn get_me(
+    req: HttpRequest,
+    data: web::Data<Database>,
+) -> impl Responder {
+    let auth = req
+        .headers()
+        .get("Authorization")
+        .unwrap()
+        .to_str()
+        .unwrap();
+    let auser;
+    if auth.starts_with("Bearer") {
+        let auth = Authorization::parse(Some(auth.split(" ").collect::<Vec<_>>()[1].to_string()));
+        let user = auth.get_user(&data.pool).await.unwrap();
+        if !validate_permissions(&user, Permission::CREATE_MOD).await {
+            return HttpResponse::Unauthorized().body("Unauthorized");
+        }
+        auser = user;
+    } else {
+        return HttpResponse::Unauthorized().body("Unauthorized");
+    }
+
+    HttpResponse::Ok().json(auser)
 }

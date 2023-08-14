@@ -139,6 +139,7 @@ async fn main() -> io::Result<()> {
             .service(mods::create_mod)
             .service(cdn::cdn_get)
             .service(index)
+            .service(users::get_me)
             // the graphiql UI requires CORS to be enabled
             .wrap(Cors::permissive())
             .wrap(middleware::Logger::default())
