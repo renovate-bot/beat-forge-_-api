@@ -71,8 +71,8 @@ impl MigrationTrait for Migration {
                     downloads: stats.downloads as u64,
                 },
                 supported_versions: supported_versions.into_iter().map(|v| semver::Version::parse(&v.ver).unwrap()).collect(),
-                created_at: m.created_at.and_utc(),
-                updated_at: m.updated_at.and_utc(),
+                created_at: m.created_at.and_utc().timestamp(),
+                updated_at: m.updated_at.and_utc().timestamp(),
             };
             meili_mods.push(mm);
         }
@@ -89,7 +89,7 @@ impl MigrationTrait for Migration {
     async fn down(&self, _manager: &SchemaManager) -> Result<(), DbErr> {
         // Replace the sample below with your own migration scripts
         let client = meilisearch_sdk::client::Client::new(std::env::var("MEILI_URL").unwrap(), Some(std::env::var("MEILI_KEY").unwrap()));
-        client.index(format!("{}_mods", std::env::var("MEILI_PREFIX").unwrap_or("".to_string()))).delete().await.unwrap();
+        client.index(format!("{}_mods", std::env::var("MEILI_PREFIX").unwrap())).delete().await.unwrap();
         Ok(())
     }
 }

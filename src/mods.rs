@@ -586,8 +586,8 @@ pub async fn create_mod(
             .into_iter()
             .map(|v| MeiliVersion { version: v })
             .collect(),
-        created_at: db_mod.created_at.and_utc(),
-        updated_at: db_mod.updated_at.and_utc(),
+        created_at: db_mod.created_at.and_utc().timestamp(),
+        updated_at: db_mod.updated_at.and_utc().timestamp(),
         supported_versions,
     };
     client.index(format!("{}mods", std::env::var("MEILI_PREFIX").unwrap_or("".to_string()))).add_or_replace(&[meilimod], None).await.unwrap();
