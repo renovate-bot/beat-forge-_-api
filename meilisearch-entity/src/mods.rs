@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize)]
 pub struct Entity {
     pub id: sea_orm::prelude::Uuid,
+    pub slug: String,
     pub name: String,
     pub description: String,
     pub versions: Vec<super::version::Entity>,

@@ -572,6 +572,7 @@ pub async fn create_mod(
 
     let meilimod = MeiliMod {
         id: db_mod.id,
+        slug: db_mod.slug,
         name: db_mod.name,
         description: db_mod.description.unwrap_or("".to_string()),
         category: db_cata.name,

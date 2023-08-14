@@ -57,6 +57,7 @@ impl MigrationTrait for Migration {
 
             let mm = MeiliMod {
                 id: m.id,
+                slug: m.slug,
                 name: m.name,
                 description: m.description.unwrap_or("".to_string()),
                 category: category.name,
