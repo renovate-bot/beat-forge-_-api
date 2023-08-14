@@ -56,13 +56,13 @@ pub struct ModAuthor {
 }
 
 impl Mod {
-    async fn from_db_mod(
-        db: &DatabaseConnection,
-        m: entity::mods::Model,
-    ) -> Result<Self, FieldError> {
-        let category = Categories::find_by_id(m.category).one(db).await?.unwrap();
-        let stats = ModStats::find_by_id(m.stats).one(db).await?.unwrap();
-        let author = Users::find_by_id(m.author).one(db).await?.unwrap();
+    async fn from_db_mod(db: &Database, m: entity::mods::Model) -> Result<Self, FieldError> {
+        let category = Categories::find_by_id(m.category)
+            .one(&db.pool)
+            .await?
+            .unwrap();
+        let stats = ModStats::find_by_id(m.stats).one(&db.pool).await?.unwrap();
+        let author = Users::find_by_id(m.author).one(&db.pool).await?.unwrap();
         Ok(Mod {
             id: Uuid::from_bytes(*m.id.as_bytes()),
             slug: m.slug,
@@ -70,7 +70,7 @@ impl Mod {
             description: m.description,
             icon: m.icon,
             cover: m.cover,
-            author: ModAuthor {
+            author: ModAuthor { 
                 id: Uuid::from_bytes(*author.id.as_bytes()),
                 username: author.username,
                 display_name: author.display_name,
