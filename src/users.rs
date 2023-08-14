@@ -1,8 +1,10 @@
 use actix_web::{post, web, HttpRequest, HttpResponse, Responder};
 use chrono::{DateTime, Utc};
 use entity::prelude::*;
-use juniper::{graphql_value, FieldError, FieldResult, GraphQLObject};
-use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QuerySelect, Set};
+use juniper::{
+    graphql_value, FieldError, FieldResult, GraphQLObject,
+};
+use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QuerySelect, Set, DatabaseConnection};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use uuid::Uuid;
@@ -37,10 +39,7 @@ pub struct User {
 }
 
 impl User {
-    async fn from_db_user(
-        db: &DatabaseConnection,
-        u: entity::users::Model,
-    ) -> Result<Self, FieldError> {
+    async fn from_db_user(db: &DatabaseConnection, u: entity::users::Model) -> Result<Self, FieldError> {
         Ok(User {
             id: Uuid::from_bytes(*u.id.as_bytes()),
             github_id: u.github_id.to_string(),
@@ -97,9 +96,7 @@ pub async fn find_all(
             users
                 .iter_mut()
                 .map(move |user| async move {
-                    if usr.id.as_bytes() != user.id.as_bytes()
-                        && !validate_permissions(user.clone(), Permission::VIEW_OTHER).await
-                    {
+                    if usr.id.as_bytes() != user.id.as_bytes() && !validate_permissions(user.clone(), Permission::VIEW_OTHER).await {
                         user.email = None;
                         user.api_key = None;
                     }
@@ -119,15 +116,11 @@ pub async fn find_all(
         )
         .await;
     }
-
+    
     Ok(users)
 }
 
-pub async fn find_by_id(
-    db: &DatabaseConnection,
-    _id: Uuid,
-    auth: Authorization,
-) -> FieldResult<User> {
+pub async fn find_by_id(db: &DatabaseConnection, _id: Uuid, auth: Authorization) -> FieldResult<User> {
     let id = sea_orm::prelude::Uuid::from_bytes(*_id.as_bytes());
 
     let user = Users::find_by_id(id).one(db).await?;
@@ -144,9 +137,7 @@ pub async fn find_by_id(
     // check auth
     let auser = auth.get_user(db).await;
     if let Some(usr) = auser {
-        if usr.id.as_bytes() != user.id.as_bytes()
-            && !validate_permissions(&user, Permission::VIEW_OTHER).await
-        {
+        if usr.id.as_bytes() != user.id.as_bytes() && !validate_permissions(&user, Permission::VIEW_OTHER).await {
             user.email = None;
             user.api_key = None;
         }
@@ -186,31 +177,11 @@ pub async fn user_auth(
 
     let github_user = minreq::get("https://api.github.com/user")
         .with_header("User-Agent", "forge-registry")
-        .with_header("Accept", "application/vnd.github+json")
         .with_header("Authorization", format!("Bearer {}", gat))
         .send()
         .unwrap();
-
-    let github_emails = minreq::get("https://api.github.com/user/emails")
-        .with_header("User-Agent", "forge-registry")
-        .with_header("Accept", "application/vnd.github+json")
-        .with_header("Authorization", format!("Bearer {}", gat))
-        .send()
-        .unwrap()
-        .json::<Vec<GithubEmail>>()
-        .unwrap();
-
-    log::debug!("{:?}", github_emails);
-
-    let primary_email = github_emails
-        .iter()
-        .find(|email| email.primary)
-        .unwrap()
-        .email
-        .clone();
 
     log::debug!("{}", github_user.as_str().unwrap());
-    log::debug!("{}", primary_email);
     let github_user = serde_json::from_str::<GithubUser>(github_user.as_str().unwrap()).unwrap();
 
     let mby_user = Users::find()
@@ -223,7 +194,7 @@ pub async fn user_auth(
         let usr = entity::users::ActiveModel {
             github_id: Set(github_user.id as i32),
             username: Set(github_user.login),
-            email: Set(primary_email),
+            email: Set(github_user.email),
             bio: Set(github_user.bio),
             avatar: Set(github_user.avatar_url),
             permissions: Set(7),
@@ -249,15 +220,7 @@ pub async fn user_auth(
 pub struct GithubUser {
     pub avatar_url: Option<String>,
     pub bio: Option<String>,
-    pub email: Option<String>,
+    pub email: String,
     pub id: i64,
     pub login: String,
-}
-
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct GithubEmail {
-    pub email: String,
-    pub primary: bool,
-    pub verified: bool,
-    pub visibility: Option<String>,
 }

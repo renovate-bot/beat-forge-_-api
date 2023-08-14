@@ -11,4 +11,6 @@ pub struct Entity {
     pub author: super::user::Entity,
     pub stats: super::mod_stats::Entity,
     pub supported_versions: Vec<Version>,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
 }

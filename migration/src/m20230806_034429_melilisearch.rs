@@ -1,3 +1,4 @@
+use meilisearch_sdk::settings::Settings;
 use sea_orm_migration::{prelude::*, sea_orm::{EntityTrait, ColumnTrait, QueryFilter}};
 use entity::prelude::*;
 use meilisearch_entity::prelude::*;
@@ -70,14 +71,16 @@ impl MigrationTrait for Migration {
                     downloads: stats.downloads as u64,
                 },
                 supported_versions: supported_versions.into_iter().map(|v| semver::Version::parse(&v.ver).unwrap()).collect(),
+                created_at: m.created_at.and_utc(),
+                updated_at: m.updated_at.and_utc(),
             };
             meili_mods.push(mm);
         }
 
         let client = meilisearch_sdk::client::Client::new(std::env::var("MEILI_URL").unwrap(), Some(std::env::var("MEILI_KEY").unwrap()));
-        client.index(format!("{}_mods", std::env::var("MEILI_PREFIX").unwrap_or("".to_string()))).set_filterable_attributes(["category"]).await.unwrap();
-        client.index(format!("{}_mods", std::env::var("MEILI_PREFIX").unwrap_or("".to_string()))).set_searchable_attributes(["name", "description"]).await.unwrap();
-        client.index(format!("{}_mods", std::env::var("MEILI_PREFIX").unwrap_or("".to_string()))).set_sortable_attributes(["stats.downloads"]).await.unwrap();
+
+        let settings = Settings::new().with_filterable_attributes(&["category"]).with_searchable_attributes(&["name", "description"]).with_sortable_attributes(&["stats.downloads", "created_at", "updated_at"]);
+        client.index(format!("{}_mods", std::env::var("MEILI_PREFIX").unwrap_or("".to_string()))).set_settings(&settings).await.unwrap();
         
         client.index(format!("{}_mods", std::env::var("MEILI_PREFIX").unwrap_or("".to_string()))).add_documents(&meili_mods, None).await.unwrap();
         Ok(())

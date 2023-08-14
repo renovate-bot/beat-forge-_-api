@@ -1,6 +1,7 @@
 use actix_web::{get, post, web, Error, HttpResponse, Responder};
 use entity::prelude::*;
-use forge_lib::structs::forgemod::ForgeMod;
+use forge_lib::structs::{v1::{ManifestV1, unpack_v1_forgemod, ForgeModTypes, data, manifest}};
+
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 use serde::Deserialize;
 
@@ -43,15 +44,24 @@ async fn cdn_handler(
             };
             match dl_type {
                 CdnType::Dll => {
-                    let dll = ForgeMod::try_from(&*file).unwrap().artifact_data;
+                    // let dll = ForgeMod::try_from(&*file).unwrap().artifact_data;
+                    let package = unpack_v1_forgemod(&*file).unwrap();
 
-                    return HttpResponse::Ok()
-                        .content_type("application/octet-stream")
-                        .append_header((
-                            "Content-Disposition",
-                            format!("attachment; filename=\"{}-v{}.dll\"", slug, version),
-                        ))
-                        .body(dll);
+                    match package {
+                        ForgeModTypes::Mod(m) => 
+                        {
+                            return HttpResponse::Ok()
+                                .content_type("application/octet-stream")
+                                .append_header((
+                                    "Content-Disposition",
+                                    format!("attachment; filename=\"{}.dll\"", m.manifest._id),
+                                ))
+                                .body(m.data.artifact_data);
+                        },
+                        _ => {
+                            return HttpResponse::NotFound().finish();
+                        }
+                    }
                 }
                 CdnType::Package => {
                     return HttpResponse::Ok()
