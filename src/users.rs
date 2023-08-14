@@ -240,9 +240,6 @@ pub async fn get_me(
     if auth.starts_with("Bearer") {
         let auth = Authorization::parse(Some(auth.split(" ").collect::<Vec<_>>()[1].to_string()));
         let user = auth.get_user(&data.pool).await.unwrap();
-        if !validate_permissions(&user, Permission::CREATE_MOD).await {
-            return HttpResponse::Unauthorized().body("Unauthorized");
-        }
         auser = user;
     } else {
         return HttpResponse::Unauthorized().body("Unauthorized");
