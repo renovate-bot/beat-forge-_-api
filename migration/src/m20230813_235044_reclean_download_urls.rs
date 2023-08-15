@@ -10,19 +10,23 @@ impl MigrationTrait for Migration {
         // Reset all db download URLs
         let db = manager.get_connection();
         let vers = Versions::find().all(db).await.unwrap();
-        for mut v in vers {
+        for v in vers {
             let parent = Mods::find_by_id(v.mod_id)
                 .one(db)
                 .await
                 .unwrap()
                 .unwrap();
-            v.download_url = format!(
+            let ver = v.version.clone();
+            let mut am = v.into_active_model();
+            am.download_url = sea_orm::Set(format!(
                 "{}/cdn/{}@{}",
                 std::env::var("PUBLIC_URL").unwrap(),
                 parent.slug,
-                v.version
-            );
-            v.into_active_model().save(db).await.unwrap();
+                ver
+            ));
+            let am = am.reset_all();
+            
+            am.update(db).await.unwrap();
         }
 
         Ok(())
