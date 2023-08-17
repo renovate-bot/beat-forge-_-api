@@ -7,6 +7,7 @@ use actix_web::{
     App, HttpResponse, HttpServer, Error, get, Responder,
 };
 use cached::async_sync::OnceCell;
+use meilisearch_sdk::settings::Settings;
 use migration::MigratorTrait;
 use rand::Rng;
 use sea_orm::{EntityTrait, PaginatorTrait, DatabaseConnection};
@@ -17,7 +18,6 @@ mod mods;
 mod versions;
 mod auth;
 mod cdn;
-mod search;
 
 use crate::schema::{create_schema, Schema};
 
@@ -113,6 +113,12 @@ async fn main() -> io::Result<()> {
     //migrate
     migration::Migrator::up(&db_conn, None).await.unwrap();
 
+    // set meilisearch settings
+    let client = meilisearch_sdk::client::Client::new(std::env::var("MEILI_URL").unwrap(), Some(std::env::var("MEILI_KEY").unwrap()));
+
+    let settings = Settings::new().with_filterable_attributes(&["category"]).with_searchable_attributes(&["name", "description"]).with_sortable_attributes(&["stats.downloads", "created_at", "updated_at"]);
+    client.index(format!("{}_mods", std::env::var("MEILI_PREFIX").unwrap_or("".to_string()))).set_settings(&settings).await.unwrap();
+
     // Start HTTP server
     HttpServer::new( move || {
         App::new()
@@ -133,6 +139,7 @@ async fn main() -> io::Result<()> {
             .service(mods::create_mod)
             .service(cdn::cdn_get)
             .service(index)
+            .service(users::get_me)
             // the graphiql UI requires CORS to be enabled
             .wrap(Cors::permissive())
             .wrap(middleware::Logger::default())

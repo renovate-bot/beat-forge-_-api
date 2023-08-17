@@ -3,7 +3,7 @@ use std::vec;
 use actix_web::{post, web, HttpRequest, HttpResponse, Responder};
 use chrono::{DateTime, Utc};
 
-use forge_lib::structs::forgemod::ForgeMod;
+use forge_lib::structs::{forgemod::ForgeMod, v1::{unpack_v1_forgemod, ForgeModTypes}};
 use futures::StreamExt;
 use juniper::{graphql_value, FieldError, FieldResult, GraphQLObject};
 use migration::OnConflict;
@@ -226,10 +226,18 @@ pub async fn create_mod(
         buf.extend_from_slice(&item);
     }
 
-    let forgemod = ForgeMod::try_from(&buf[..]).unwrap();
+    let forgemod = {
+        let fm = unpack_v1_forgemod(&*buf).unwrap();
+        match fm {
+            ForgeModTypes::Mod(fm) => fm,
+            _ => return HttpResponse::BadRequest().body("Invalid ForgeMod"),
+        }
+    };
+
+    let manifest = forgemod.manifest.inner.clone();
 
     let db_cata = Categories::find()
-        .filter(entity::categories::Column::Name.eq(forgemod.manifest.category.clone().to_string()))
+        .filter(entity::categories::Column::Name.eq(manifest.category.clone().to_string()))
         .one(&db.pool)
         .await
         .unwrap();
@@ -246,7 +254,7 @@ pub async fn create_mod(
             .unwrap()
     };
 
-    let v_req = forgemod.manifest.game_version.clone();
+    let v_req = manifest.game_version.clone();
     let vers = BeatSaberVersions::find()
         .all(&db.pool)
         .await
@@ -301,16 +309,16 @@ pub async fn create_mod(
 
         let version = entity::versions::ActiveModel {
             mod_id: Set(db_mod),
-            version: Set(forgemod.manifest.version.clone().to_string()),
+            version: Set(manifest.version.clone().to_string()),
             stats: Set(version_stats),
             //todo: artifact hash
             artifact_hash: Set("".to_string()),
             //todo: download url
             download_url: Set(format!(
                 "{}/cdn/{}@{}",
-                std::env::var("DOWNLOAD_URL").unwrap(),
+                std::env::var("PUBLIC_URL").unwrap(),
                 forgemod.manifest._id,
-                forgemod.manifest.version.clone().to_string()
+                manifest.version.clone().to_string()
             )),
             ..Default::default()
         }
@@ -329,7 +337,7 @@ pub async fn create_mod(
             .unwrap();
         }
 
-        for conflict in forgemod.manifest.conflicts {
+        for conflict in manifest.conflicts {
             let c_ver = Versions::find()
                 .filter(entity::versions::Column::ModId.eq(db_mod))
                 .all(&trans)
@@ -354,7 +362,7 @@ pub async fn create_mod(
             }
         }
 
-        for dependent in forgemod.manifest.depends {
+        for dependent in manifest.depends {
             let d_ver = Versions::find()
                 .filter(entity::versions::Column::ModId.eq(db_mod))
                 .all(&trans)
@@ -390,10 +398,10 @@ pub async fn create_mod(
 
         let db_mod = entity::mods::ActiveModel {
             slug: Set(forgemod.manifest._id.clone()),
-            name: Set(forgemod.manifest.name.clone()),
+            name: Set(manifest.name.clone()),
             author: Set(auser.id),
-            description: Set(Some(forgemod.manifest.description.clone())),
-            website: Set(Some(forgemod.manifest.website.clone())),
+            description: Set(Some(manifest.description.clone())),
+            website: Set(Some(manifest.website.clone())),
             category: Set(db_cata.id),
             stats: Set(mod_stats),
             ..Default::default()
@@ -431,16 +439,16 @@ pub async fn create_mod(
 
         let version = entity::versions::ActiveModel {
             mod_id: Set(db_mod),
-            version: Set(forgemod.manifest.version.clone().to_string()),
+            version: Set(manifest.version.clone().to_string()),
             stats: Set(version_stats),
             //todo: artifact hash
             artifact_hash: Set("".to_string()),
             //todo: download url
             download_url: Set(format!(
                 "{}/cdn/{}@{}",
-                std::env::var("DOWNLOAD_URL").unwrap(),
+                std::env::var("PUBLIC_URL").unwrap(),
                 forgemod.manifest._id,
-                forgemod.manifest.version.clone().to_string()
+                manifest.version.clone().to_string()
             )),
             ..Default::default()
         }
@@ -467,7 +475,7 @@ pub async fn create_mod(
         .await
         .unwrap();
 
-        for conflict in forgemod.manifest.conflicts {
+        for conflict in manifest.conflicts {
             let c_ver = Versions::find()
                 .filter(entity::versions::Column::ModId.eq(db_mod))
                 .all(&trans)
@@ -492,7 +500,7 @@ pub async fn create_mod(
             }
         }
 
-        for dependent in forgemod.manifest.depends {
+        for dependent in manifest.depends {
             let d_ver = Versions::find()
                 .filter(entity::versions::Column::ModId.eq(db_mod))
                 .all(&trans)
@@ -564,6 +572,7 @@ pub async fn create_mod(
 
     let meilimod = MeiliMod {
         id: db_mod.id,
+        slug: db_mod.slug,
         name: db_mod.name,
         description: db_mod.description.unwrap_or("".to_string()),
         category: db_cata.name,
@@ -578,12 +587,10 @@ pub async fn create_mod(
             .into_iter()
             .map(|v| MeiliVersion { version: v })
             .collect(),
+        created_at: db_mod.created_at.and_utc().timestamp(),
+        updated_at: db_mod.updated_at.and_utc().timestamp(),
         supported_versions,
     };
-    client.index(format!("{}_mods", std::env::var("MEILI_PREFIX").unwrap_or("".to_string()))).set_filterable_attributes(["category"]).await.unwrap();
-    client.index(format!("{}_mods", std::env::var("MEILI_PREFIX").unwrap_or("".to_string()))).set_searchable_attributes(["name", "description", "author.display_name", "author.username"]).await.unwrap();
-    client.index(format!("{}_mods", std::env::var("MEILI_PREFIX").unwrap_or("".to_string()))).set_sortable_attributes(["stats.downloads"]).await.unwrap();
-
     client.index(format!("{}mods", std::env::var("MEILI_PREFIX").unwrap_or("".to_string()))).add_or_replace(&[meilimod], None).await.unwrap();
 
     HttpResponse::Created().finish()
