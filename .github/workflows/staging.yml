@@ -39,7 +39,7 @@ jobs:
         run: cargo test --release
 
       - name: Login to GitHub Packages
-        uses: docker/login-action@v1
+        uses: docker/login-action@v2
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
