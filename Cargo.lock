@@ -1474,7 +1474,7 @@ checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 [[package]]
 name = "forge-lib"
 version = "1.0.0"
-source = "git+https://github.com/beat-forge/lib#3a305994558b961f63e11abb74379cc9433c54ef"
+source = "git+https://github.com/beat-forge/lib#7041c9fc0f2603a4d9b33c0ada0f77c007cee83e"
 dependencies = [
  "bincode",
  "bytes",
