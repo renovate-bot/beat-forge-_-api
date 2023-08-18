@@ -22,7 +22,7 @@ env_logger = "0.10.0"
 juniper = "0.15.11"
 log = "0.4.20"
 sea-orm = { version = "0.12", features = ["sqlx-postgres", "runtime-actix-rustls"] }
-uuid = { version = "0.8", features = ["serde", "v4"] }
+uuid = { version = "1.4", features = ["serde", "v4"] }
 entity = { path = "./entity" }
 dotenv = "0.15.0"
 juniper_actix = "0.4.0"
